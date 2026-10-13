@@ -110,6 +110,23 @@ jobs:
             dist/checksums.txt
           fail_on_unmatched_files: true
 
+      # GitHub documents Marketplace publishing only as a checkbox on the release page, with no
+      # API or CLI behind it, so a release cut here is never listed until someone ticks it. A
+      # skipped tick leaves the listing showing the previous version. This puts the edit page one
+      # click away on the run summary.
+      - name: Point at the Marketplace checkbox
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          {
+            echo "### Marketplace"
+            echo
+            echo "The release is out. GitHub lists an action on the Marketplace only when the Publish"
+            echo "this Action box on the release page is ticked, and nothing here can tick it."
+            echo
+            echo "Tick it: https://github.com/${GITHUB_REPOSITORY}/releases/edit/${TAG}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Bump Homebrew formula
         id: homebrew
         continue-on-error: true
