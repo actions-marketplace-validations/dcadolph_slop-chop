@@ -98,6 +98,7 @@ func TestContestedAcronymsStaySilent(t *testing.T) {
 	for _, in := range []string{
 		"a SQL query", "an SQL query",
 		"a SQL's plan", "an SQL's plan",
+		"a sql query", "an sql query",
 	} {
 		t.Run(in, func(t *testing.T) {
 			t.Parallel()
@@ -111,5 +112,95 @@ func TestContestedAcronymsStaySilent(t *testing.T) {
 	// still corrected.
 	if !articleNeedsFix("a RFC describes it", 0, len("a RFC describes it")) {
 		t.Error("a RFC should still be corrected to an RFC")
+	}
+}
+
+// TestStartsWithVowelSoundSpelledLowercase pins the lowercase words a reader names letter by
+// letter. The spelling rule alone read npm as a consonant word and corrected the right "an
+// npm package" to "a npm package", and read url as a vowel word and corrected "a url" to "an
+// url". Both directions are pinned, along with the ordinary words the list must not touch.
+func TestStartsWithVowelSoundSpelledLowercase(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		Word string
+		Want bool
+	}{{ // Test 0: npm is said "en-pee-em", so it opens on a vowel sound.
+		Word: "npm", Want: true,
+	}, { // Test 1: a possessive does not defeat the lookup.
+		Word: "npm's", Want: true,
+	}, { // Test 2: nor does a hyphenated compound.
+		Word: "npm-based", Want: true,
+	}, { // Test 3: mcp is said "em-cee-pee".
+		Word: "mcp", Want: true,
+	}, { // Test 4: llm is said "el-el-em".
+		Word: "llm", Want: true,
+	}, { // Test 5: html opens on "aitch".
+		Word: "html", Want: true,
+	}, { // Test 6: nginx is said "engine-x".
+		Word: "nginx", Want: true,
+	}, { // Test 7: xml opens on "ex".
+		Word: "xml", Want: true,
+	}, { // Test 8: url opens on "you", a consonant sound.
+		Word: "url", Want: false,
+	}, { // Test 9: uuid opens on "you" as well.
+		Word: "uuid", Want: false,
+	}, { // Test 10: ui is said "you-eye".
+		Word: "ui", Want: false,
+	}, { // Test 11: pnpm opens on "pee", so it keeps "a".
+		Word: "pnpm", Want: false,
+	}, { // Test 12: an ordinary word beginning with n is untouched.
+		Word: "node", Want: false,
+	}, { // Test 13: and an ordinary vowel word keeps "an".
+		Word: "idea", Want: true,
+	}, { // Test 14: user still opens on a consonant sound through its prefix.
+		Word: "user", Want: false,
+	}}
+
+	for testNum, test := range tests {
+		t.Run(fmt.Sprintf("test %d %s", testNum, test.Word), func(t *testing.T) {
+			t.Parallel()
+			if got := startsWithVowelSound(test.Word); got != test.Want {
+				t.Errorf("startsWithVowelSound(%q) = %v, want %v", test.Word, got, test.Want)
+			}
+		})
+	}
+}
+
+// TestArticleNeedsFixSpelledLowercase checks the rule end to end on the sentence that exposed
+// the bug, so a correct "an npm package" is left alone and a wrong one is still caught.
+func TestArticleNeedsFixSpelledLowercase(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		In   string
+		Want bool
+	}{{ // Test 0: the correct article is quiet.
+		In: "an npm package", Want: false,
+	}, { // Test 1: the wrong article is still caught.
+		In: "a npm package", Want: true,
+	}, { // Test 2: an mcp server is correct.
+		In: "an mcp server", Want: false,
+	}, { // Test 3: an llm call is correct.
+		In: "an llm call", Want: false,
+	}, { // Test 4: an http request is correct.
+		In: "an http request", Want: false,
+	}, { // Test 5: a url is correct.
+		In: "a url", Want: false,
+	}, { // Test 6: an url is wrong.
+		In: "an url", Want: true,
+	}, { // Test 7: a uuid is correct.
+		In: "a uuid column", Want: false,
+	}, { // Test 8: an uuid is wrong.
+		In: "an uuid column", Want: true,
+	}}
+
+	for testNum, test := range tests {
+		t.Run(fmt.Sprintf("test %d", testNum), func(t *testing.T) {
+			t.Parallel()
+			if got := articleNeedsFix(test.In, 0, len(test.In)); got != test.Want {
+				t.Errorf("articleNeedsFix(%q) = %v, want %v", test.In, got, test.Want)
+			}
+		})
 	}
 }

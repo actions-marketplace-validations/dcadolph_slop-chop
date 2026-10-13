@@ -66,8 +66,9 @@ func articleNeedsFix(text string, start, end int) bool {
 		return false
 	}
 	// Some acronyms are read both ways by careful writers, so neither article is
-	// an error and the rule has no business picking one.
-	if contestedAcronyms[letterRun(m[3])] {
+	// an error and the rule has no business picking one. A lowercase spelling answers
+	// to the same entry, so "an sql query" is as quiet as "an SQL query".
+	if contestedAcronyms[letterRun(strings.ToUpper(m[3]))] {
 		return false
 	}
 	return startsWithVowelSound(m[3]) != (len(m[1]) == 2)
@@ -113,6 +114,43 @@ var spokenAcronyms = map[string]bool{
 	"NAN": true, "MIDI": true, "SAAS": true, "SASS": true, "LILO": true,
 }
 
+// spelledWords are lowercase words a reader names letter by letter, the npm of "an npm
+// package" and the url of "a url". The spelling rule reads a lowercase word as written, so
+// npm looks like it opens on a consonant and url on a vowel, and the rule would correct both
+// the wrong way. These are judged by the name of their first letter instead, as the all-caps
+// initialisms are. Only words commonly written in lowercase need listing, since the all-caps
+// path already applies the letter-name rule.
+//
+//nolint:gochecknoglobals // Immutable lookup.
+var spelledWords = map[string]bool{
+	// A first letter named with a vowel sound: eff, aitch, el, em, en, ar, ess, ex.
+	"faq": true, "fqdn": true, "fpga": true, "ftp": true, "fsm": true,
+	"hcl": true, "hdd": true, "hdfs": true, "hdmi": true, "hls": true, "hmac": true,
+	"hsm": true, "html": true, "http": true, "https": true,
+	"lcd": true, "ldap": true, "llm": true, "lsp": true, "lts": true, "lvm": true,
+	"lxc": true, "mcp": true, "mdx": true, "mfa": true, "mqtt": true, "mtls": true,
+	"mvp": true, "nfs": true, "nginx": true, "nlp": true, "npm": true, "nvm": true,
+	"rbac": true, "rdp": true, "rds": true, "rfc": true, "rpc": true, "rsa": true,
+	"rss": true, "rsync": true, "sbom": true, "scm": true, "scp": true, "sdk": true,
+	"sftp": true, "sla": true, "smtp": true, "sms": true, "snmp": true, "sns": true,
+	"sre": true, "ssd": true, "ssh": true, "ssl": true, "sso": true, "svg": true,
+	"svn": true, "xhr": true, "xml": true, "xpath": true, "xsd": true, "xslt": true,
+	"xss": true,
+	// A first vowel that is named with a consonant sound, the "you" of u.
+	"ui": true, "ux": true, "uri": true, "url": true, "usb": true, "utf": true, "uuid": true,
+}
+
+// lowerRun returns the leading run of lowercase letters in word, so npm's and npm-based both
+// answer to npm.
+func lowerRun(word string) string {
+	for i := 0; i < len(word); i++ {
+		if word[i] < 'a' || word[i] > 'z' {
+			return word[:i]
+		}
+	}
+	return word
+}
+
 // letterRun returns the leading run of letters in word, so a lookup is not defeated by the
 // punctuation the word pattern admits: README, README's, and README. all answer to README.
 func letterRun(word string) string {
@@ -128,7 +166,8 @@ func letterRun(word string) string {
 // "a" and "an". It handles the common exceptions: silent-h words take "an", "you"-sound and
 // "one"-sound words take "a" despite a leading vowel, and an all-caps initialism opening on a
 // letter whose name starts with a vowel (A, E, F, H, I, L, M, N, O, R, S, X) takes "an".
-// An all-caps word a reader pronounces rather than spells is judged by its sound instead.
+// An all-caps word a reader pronounces rather than spells is judged by its sound instead, and
+// a lowercase word a reader spells, like npm, is judged by the name of its first letter.
 func startsWithVowelSound(word string) bool {
 	lw := strings.ToLower(strings.Trim(word, "'"))
 	if lw == "" {
@@ -137,6 +176,9 @@ func startsWithVowelSound(word string) bool {
 	if word == strings.ToUpper(word) && word != lw && len(word) > 1 &&
 		!spokenAcronyms[letterRun(word)] {
 		return strings.ContainsRune("AEFHILMNORSX", rune(word[0]))
+	}
+	if spelledWords[lowerRun(lw)] {
+		return strings.ContainsRune("aefhilmnorsx", rune(lw[0]))
 	}
 	for _, p := range silentH {
 		if strings.HasPrefix(lw, p) {
