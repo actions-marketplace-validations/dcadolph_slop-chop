@@ -1,17 +1,19 @@
 {% extends "base.html" %}
 
 {% block extrahead %}
+  {# The home page is titled Home, which makes a poor link preview, so it gets its own. #}
+  {% set share_title = "slop-chop: chop the slop" if page.is_homepage else (page.title | default('slop-chop')) ~ " - slop-chop" %}
   <link rel="manifest" href="manifest.json">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="slop-chop">
-  <meta property="og:title" content="{{ page.title | default('slop-chop') }} - slop-chop">
+  <meta property="og:title" content="{{ share_title }}">
   <meta property="og:description" content="Chop the slop. Paste text that sounds like a bot, get back text that sounds like you. Runs in your browser, nothing uploaded.">
   <meta property="og:url" content="{{ page.canonical_url | default('https://slop-chop.com/') }}">
   <meta property="og:image" content="https://slop-chop.com/assets/card.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="slop-chop">
+  <meta name="twitter:title" content="{{ share_title }}">
   <meta name="twitter:description" content="Chop the slop. Paste text that sounds like a bot, get back text that sounds like you. Runs in your browser, nothing uploaded.">
   <meta name="twitter:image" content="https://slop-chop.com/assets/card.png">
   {% if page.is_homepage %}
