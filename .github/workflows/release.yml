@@ -111,9 +111,10 @@ jobs:
           fail_on_unmatched_files: true
 
       # GitHub documents Marketplace publishing only as a checkbox on the release page, with no
-      # API or CLI behind it, so a release cut here is never listed until someone ticks it. A
-      # skipped tick leaves the listing showing the previous version. This puts the edit page one
-      # click away on the run summary.
+      # API or CLI behind it, so nothing here can refresh the listing. The Marketplace page
+      # follows the latest release on its own. The description that search uses and the version
+      # list change only when someone ticks the box on a release, which matters when action.yml's
+      # description changed. This puts the edit page one click away on the run summary.
       - name: Point at the Marketplace checkbox
         env:
           TAG: ${{ github.ref_name }}
@@ -121,10 +122,12 @@ jobs:
           {
             echo "### Marketplace"
             echo
-            echo "The release is out. GitHub lists an action on the Marketplace only when the Publish"
-            echo "this Action box on the release page is ticked, and nothing here can tick it."
+            echo "The release is out and the Marketplace page already follows it."
+            echo "Its description and version list change only when the Publish this Action box"
+            echo "on the release page is ticked, and nothing here can tick it. That matters when"
+            echo "action.yml's description changed."
             echo
-            echo "Tick it: https://github.com/${GITHUB_REPOSITORY}/releases/edit/${TAG}"
+            echo "Edit page: https://github.com/${GITHUB_REPOSITORY}/releases/edit/${TAG}"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Bump Homebrew formula
