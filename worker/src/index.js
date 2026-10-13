@@ -22,8 +22,9 @@ const apiDisabled = true;
 // disabledMessage is the explanation every disabled route gives.
 const disabledMessage =
   "The hosted slop-chop API is temporarily disabled: the Cloudflare free plan's CPU limit " +
-  "cannot reliably boot the engine. Run it locally instead: npm install -g slop-chop, or " +
-  "brew install dcadolph/tap/slop-chop. See https://slop-chop.com for every install path.";
+  "cannot reliably boot the engine. Run it locally instead: brew install dcadolph/tap/slop-chop " +
+  "or go install github.com/dcadolph/slop-chop@latest. The web app at https://slop-chop.com " +
+  "runs in your browser and lists every install path.";
 
 // maxTextBytes caps one request's text, so a giant paste cannot pin the isolate.
 const maxTextBytes = 1024 * 1024;
