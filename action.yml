@@ -1,5 +1,5 @@
 name: slop-chop
-description: Flag AI slop in text and fail the check when it finds any, or fix it in place.
+description: Flag or fix AI writing tells in markdown and prose, like em-dashes and filler phrases. Fails the check on slop.
 branding:
   icon: scissors
   color: green
