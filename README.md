@@ -225,7 +225,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dcadolph/slop-chop@v0.47.0
+      - uses: dcadolph/slop-chop@v0.48.0
         with:
           files: docs/intro.md docs/guide.md
           # max: 25                   # optional, the score line
@@ -241,7 +241,7 @@ fail on any single finding, the way `slop-chop check` does on the command line. 
 line sits where ordinary human writing almost never lands: 0.9 percent of the 886 READMEs in
 the [benchmark](docs/BENCHMARK.md) score 25 or more.
 
-The action builds the engine from the tag you name, so `@v0.47.0` pins the engine and its
+The action builds the engine from the tag you name, so the tag pins the engine and its
 scoring version together. A newer tag can score the same file differently when its scoring
 version is higher. Set `scoring-version` to the version your gate was tuned against and the
 job fails, with a pointer to [docs/SCORING.md](docs/SCORING.md), the day a tag bump changes
@@ -282,7 +282,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.head_ref }}
-      - uses: dcadolph/slop-chop@v0.47.0
+      - uses: dcadolph/slop-chop@v0.48.0
         with:
           files: docs/intro.md docs/guide.md
           mode: fix
