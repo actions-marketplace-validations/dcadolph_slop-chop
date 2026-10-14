@@ -177,12 +177,17 @@ lint result, not an authorship verdict.
 
 ```sh
 slop-chop score notes.md            # notes.md: 42 (mixed: 5 tells in 180 words)
-slop-chop score --json notes.md     # {"value":42,"tells":7,"words":210,...}
+slop-chop score --json notes.md     # {"value":42,"scoringVersion":1,"tells":7,...}
 slop-chop score --max 20 notes.md   # exit non-zero when the score is above 20
 ```
 
 `--max` turns it into a gate, so a document over the bar fails a build the same way `check`
 does.
+
+Every score names the scoring version that produced it. The version rises on any release
+that can move the score of unchanged text, and [docs/SCORING.md](docs/SCORING.md) lists what
+moved, so a gate set on one version keeps its meaning until the number changes. A test in
+the repo fails when the benchmark corpus scores differently without a bump.
 
 ## Structural tells
 
@@ -221,6 +226,7 @@ jobs:
           files: docs/intro.md docs/guide.md
           # max: 25                   # optional, the score line
           # strict: "true"            # optional, fail on any single finding
+          # scoring-version: "1"      # optional, fail when the engine scores differently
           # profile: myprofile.json   # optional
           # dialect: american         # optional
           # preset: plain             # optional
@@ -230,6 +236,33 @@ Set `max` to move the line, or `max: 100` to turn the score gate off. Set `stric
 fail on any single finding, the way `slop-chop check` does on the command line. The default
 line sits where ordinary human writing almost never lands: 0.9 percent of the 886 READMEs in
 the [benchmark](docs/BENCHMARK.md) score 25 or more.
+
+The action builds the engine from the tag you name, so `@v0.47.0` pins the engine and its
+scoring version together. A newer tag can score the same file differently when its scoring
+version is higher. Set `scoring-version` to the version your gate was tuned against and the
+job fails, with a pointer to [docs/SCORING.md](docs/SCORING.md), the day a tag bump changes
+it, instead of quietly moving your gate.
+
+A finding that is right for your repo has two exits. Silence one line with a directive, in
+Markdown or in a code comment, or stop flagging a word everywhere with the `allow` list in
+a `.slop-chop.json` at the repo root, which the action picks up on its own:
+
+```md
+<!-- slop-chop-ignore-next-line -->
+We leverage the platform on purpose here.
+```
+
+```go
+// slop-chop-ignore-next-line
+// A robust fallback for the legacy path.
+```
+
+```json
+{ "allow": ["leverage", "robust"] }
+```
+
+`slop-chop-ignore` alone silences the line it sits on. [docs/PROFILE.md](docs/PROFILE.md)
+has the rest.
 
 Or have it fix the files and push the cleanup back to the pull request branch:
 
@@ -458,6 +491,7 @@ The same engine runs on many surfaces. All local and free unless noted.
 | Doc                                | What is inside                                                                      |
 |------------------------------------|-------------------------------------------------------------------------------------|
 | [docs/PROFILE.md](docs/PROFILE.md) | Every profile field, the presets, dialects, the allow list, and ignores.            |
+| [docs/SCORING.md](docs/SCORING.md) | The scoring version, what moved at each one, and how to pin a gate.                 |
 | [docs/VOICE.md](docs/VOICE.md)     | Keep, prefer, and avoid, learning from your edits, and the voice fingerprint.&nbsp; |
 | [docs/PLUGIN.md](docs/PLUGIN.md)   | The Claude Code plugin: install, the skill, the command, and backends.              |
 | [ENGINE.md](ENGINE.md)             | How the engine works: rule kinds, the order they run in, and the rewrite.           |
