@@ -9,6 +9,7 @@ import (
 
 	"github.com/dcadolph/slop-chop/cmd/config"
 	"github.com/dcadolph/slop-chop/internal/jsonutil"
+	"github.com/dcadolph/slop-chop/internal/source"
 	"github.com/dcadolph/slop-chop/sanitize"
 )
 
@@ -34,6 +35,7 @@ func checkCmd() *cobra.Command {
 	f.AddFlag(&config.FlagJSON)
 	f.AddFlag(&config.FlagPretty)
 	f.AddFlag(&config.FlagWhy)
+	f.AddFlag(&config.FlagAs)
 	return cmd
 }
 
@@ -52,7 +54,13 @@ func runCheck(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		return checkOne(s, text, "", cmd.OutOrStdout(), cmd.ErrOrStderr())
+		as := config.As()
+		if as != "" {
+			if text, err = maskStdin(text, as); err != nil {
+				return err
+			}
+		}
+		return checkOne(s, text, "", as != "", cmd.OutOrStdout(), cmd.ErrOrStderr())
 	}
 	found := false
 	for _, path := range args {
@@ -63,7 +71,7 @@ func runCheck(cmd *cobra.Command, args []string) error {
 		if !ok {
 			continue
 		}
-		switch err := checkOne(s, text, path, cmd.OutOrStdout(), cmd.ErrOrStderr()); {
+		switch err := checkOne(s, text, path, source.Is(path), cmd.OutOrStdout(), cmd.ErrOrStderr()); {
 		case errors.Is(err, errFindings):
 			found = true
 		case err != nil:
@@ -77,12 +85,13 @@ func runCheck(cmd *cobra.Command, args []string) error {
 }
 
 // checkOne reports findings for one input and returns errFindings when there are any.
-// Findings on a file are prefixed with its path, so a terminal can jump to the spot. On a
-// source file the text is the comment mask, so cleanup findings are dropped: a spacing
-// nit inside a comment is not a tell, and fix will never rewrite it.
-func checkOne(s *sanitize.Sanitizer, text, path string, stdout, stderr io.Writer) error {
+// Findings on a file are prefixed with its path, so a terminal can jump to the spot. When
+// asSource is true the text is a source file's comment mask, whether it came from a path
+// or from stdin with --as, so cleanup findings are dropped: a spacing nit inside a comment
+// is not a tell, and fix will never rewrite it.
+func checkOne(s *sanitize.Sanitizer, text, path string, asSource bool, stdout, stderr io.Writer) error {
 	findings := s.Check(text)
-	if path != "" && sourceFile(path) {
+	if asSource {
 		findings = dropTidyFindings(findings)
 	}
 	if config.JSON() {

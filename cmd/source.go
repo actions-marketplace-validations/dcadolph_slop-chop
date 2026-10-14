@@ -3,46 +3,10 @@ package cmd
 import (
 	"fmt"
 	"io"
-	"path/filepath"
-	"strings"
 
+	"github.com/dcadolph/slop-chop/internal/source"
 	"github.com/dcadolph/slop-chop/sanitize"
 )
-
-// sourceExts lists file extensions whose content is source code or machine-read data
-// rather than prose. The engine's cleanups are prose rules: a semicolon split or an
-// orphan-comma strip applied to code breaks it, so these files are skipped instead of
-// corrupted. Piping a file through stdin bypasses the gate for the rare deliberate run.
-//
-//nolint:gochecknoglobals // Immutable lookup.
-var sourceExts = map[string]bool{
-	".asm": true, ".bash": true, ".c": true, ".cc": true, ".clj": true, ".cpp": true,
-	".cs": true, ".css": true, ".csv": true, ".dart": true, ".erl": true, ".ex": true,
-	".exs": true, ".fish": true, ".go": true, ".h": true, ".hcl": true, ".hpp": true,
-	".hs": true, ".ini": true, ".java": true, ".jl": true, ".js": true, ".json": true,
-	".jsonc": true, ".jsx": true, ".kt": true, ".lua": true, ".m": true, ".ml": true,
-	".mm": true, ".nim": true, ".php": true, ".pl": true, ".proto": true, ".py": true,
-	".r": true, ".rb": true, ".rs": true, ".scala": true, ".sh": true, ".sql": true,
-	".swift": true, ".tf": true, ".toml": true, ".ts": true, ".tsx": true, ".tsv": true,
-	".vim": true, ".yaml": true, ".yml": true, ".zig": true, ".zsh": true,
-}
-
-// sourceNames lists extensionless file names that are code or build configuration.
-//
-//nolint:gochecknoglobals // Immutable lookup.
-var sourceNames = map[string]bool{
-	"dockerfile": true, "makefile": true, "gnumakefile": true, "rakefile": true,
-	"gemfile": true, "justfile": true,
-}
-
-// sourceFile reports whether path names a source code or data file the prose rules must
-// not touch.
-func sourceFile(path string) bool {
-	if sourceExts[strings.ToLower(filepath.Ext(path))] {
-		return true
-	}
-	return sourceNames[strings.ToLower(filepath.Base(path))]
-}
 
 // warnSourceSkip tells the user a file was skipped as source code and how to run it
 // anyway.
@@ -60,15 +24,28 @@ func readProse(path string, stdin io.Reader, stderr io.Writer) (text string, ok 
 	if err != nil {
 		return "", false, err
 	}
-	if path == "" || !sourceFile(path) {
+	if path == "" || !source.Is(path) {
 		return text, true, nil
 	}
-	masked, scannable := maskSource(path, text)
+	masked, scannable := source.Mask(path, text)
 	if !scannable {
 		warnSourceSkip(stderr, path)
 		return "", false, nil
 	}
 	return masked, true, nil
+}
+
+// maskStdin returns text read as a source file of the type --as names, so check and score
+// scan its comments and never its code. The type may be an extension with or without its
+// dot, like .go or go, or a file name like Makefile. Findings keep the offsets of the
+// original text, which is what lets an editor draw them on the right characters.
+func maskStdin(text, as string) (string, error) {
+	for _, name := range []string{as, "." + as} {
+		if masked, ok := source.Mask(name, text); ok {
+			return masked, nil
+		}
+	}
+	return "", fmt.Errorf("--as %q: no comment syntax is known for that file type", as)
 }
 
 // dropTidyFindings removes cleanup findings from a source file's report. The comments

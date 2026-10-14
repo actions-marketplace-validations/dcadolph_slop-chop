@@ -29,6 +29,7 @@ func scoreCmd() *cobra.Command {
 	f.AddFlag(&config.FlagPretty)
 	f.AddFlag(&config.FlagMax)
 	f.AddFlag(&config.FlagByParagraph)
+	f.AddFlag(&config.FlagAs)
 	return cmd
 }
 
@@ -46,6 +47,11 @@ func runScore(cmd *cobra.Command, args []string) error {
 		text, err := readInput("", cmd.InOrStdin())
 		if err != nil {
 			return err
+		}
+		if as := config.As(); as != "" {
+			if text, err = maskStdin(text, as); err != nil {
+				return err
+			}
 		}
 		return scoreOne(s, text, "", cmd.OutOrStdout())
 	}
