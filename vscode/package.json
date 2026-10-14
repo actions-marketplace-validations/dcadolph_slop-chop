@@ -5,6 +5,19 @@
   "version": "0.45.1",
   "publisher": "dcadolph",
   "license": "MIT",
+  "icon": "icon.png",
+  "homepage": "https://slop-chop.com",
+  "bugs": {
+    "url": "https://github.com/dcadolph/slop-chop/issues"
+  },
+  "keywords": [
+    "ai",
+    "writing",
+    "prose",
+    "markdown",
+    "linter",
+    "slop"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/dcadolph/slop-chop.git",
