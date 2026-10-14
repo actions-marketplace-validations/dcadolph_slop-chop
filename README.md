@@ -202,7 +202,9 @@ wrote in 2023.
 
 ## Use it in CI
 
-Add a workflow that fails a pull request when it finds slop:
+Add a workflow that fails a pull request when a file scores above 25 on the slop score. Every
+finding is still listed in the run log, so the whitespace and punctuation tidy-ups show up
+without failing the build:
 
 ```yaml
 name: slop-chop
@@ -215,10 +217,17 @@ jobs:
       - uses: dcadolph/slop-chop@v0.45.2
         with:
           files: docs/intro.md docs/guide.md
+          # max: 25                   # optional, the score line
+          # strict: "true"            # optional, fail on any single finding
           # profile: myprofile.json   # optional
           # dialect: american         # optional
           # preset: plain             # optional
 ```
+
+Set `max` to move the line, or `max: 100` to turn the score gate off. Set `strict: "true"` to
+fail on any single finding, the way `slop-chop check` does on the command line. The default
+line sits where ordinary human writing almost never lands: 0.9 percent of the 886 READMEs in
+the [benchmark](docs/BENCHMARK.md) score 25 or more.
 
 Or have it fix the files and push the cleanup back to the pull request branch:
 
