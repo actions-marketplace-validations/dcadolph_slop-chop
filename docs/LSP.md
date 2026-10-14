@@ -65,9 +65,12 @@ A ready-made extension is on the
 and Open VSX, with its source under
 [`vscode/`](https://github.com/dcadolph/slop-chop/tree/main/vscode). It runs the binary
 directly: diagnostics as you type, a "Chop the slop" command, and a document formatter so
-format-on-save chops the file. Its README covers the install. Rolling your own client
+format-on-save chops the file. It also reads the comments in source files and offers a quick
+fix on each fixable tell. Its README covers the install. Rolling your own client
 instead works too: point it at `slop-chop lsp` with a document selector for `markdown`,
-`plaintext`, and `git-commit`.
+`plaintext`, and `git-commit`. The language server reads a whole document as prose, so keep
+it to those prose types. Comment scanning lives in the extension and the command line for
+now, through `slop-chop check --as .go`.
 
 ## What it provides
 
