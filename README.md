@@ -216,7 +216,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dcadolph/slop-chop@v0.46.0
+      - uses: dcadolph/slop-chop@v0.47.0
         with:
           files: docs/intro.md docs/guide.md
           # max: 25                   # optional, the score line
@@ -245,7 +245,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.head_ref }}
-      - uses: dcadolph/slop-chop@v0.46.0
+      - uses: dcadolph/slop-chop@v0.47.0
         with:
           files: docs/intro.md docs/guide.md
           mode: fix
