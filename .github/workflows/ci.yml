@@ -56,6 +56,10 @@ jobs:
         run: go run . tells --markdown | diff - docs/TELLS.md
       - name: The evaluation corpus must stay locked away from the development corpus
         run: go run ./evaldata/harness -check
+      # The extension is plain JavaScript with no build step, and its edit logic is the one
+      # part that can corrupt a user's file, so its helper tests run here under plain node.
+      - name: The VS Code extension's edit helpers must pass their tests
+        run: node --test vscode/fixes.test.js
       # The release builds these two targets and nothing else did, so a Makefile break
       # reached a tag before anyone noticed and cost four stores their publish. Building
       # them here puts that failure in a pull request instead of in a release.
