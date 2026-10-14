@@ -32,6 +32,7 @@ jobs:
       # same loud failure the Homebrew and Obsidian steps use.
       OVSX_TOKEN: ${{ secrets.OVSX_TOKEN }}
       JETBRAINS_MARKETPLACE_TOKEN: ${{ secrets.JETBRAINS_MARKETPLACE_TOKEN }}
+      VSCE_PAT: ${{ secrets.VSCE_PAT }}
       # A fork has no publish credentials and should still cut a normal release, so a
       # missing token is skipped there. On the repository that owns these channels a
       # missing token is a publish that silently did not happen, which is how a stale
@@ -303,6 +304,35 @@ jobs:
           ( cd vscode && npx -y @vscode/vsce package --no-dependencies )
           npx -y ovsx publish "vscode/slop-chop-${VER}.vsix" -p "$OVSX_TOKEN"
 
+      # The Microsoft marketplace takes a Personal Access Token from Azure DevOps with the
+      # Marketplace (Manage) scope. Microsoft retires global tokens on 2026-12-01 and
+      # recommends Entra ID workload identity with vsce publish --azure-credential, so this
+      # is the step to rework before then.
+      - name: Publish to the VS Code Marketplace
+        id: vscode
+        continue-on-error: true
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if [ -z "${VSCE_PAT:-}" ]; then
+            echo "::warning::VSCE_PAT is not set, so the VS Code Marketplace still serves its" \
+              "previous release. Add the secret and re-run to publish from CI."
+            exit 0
+          fi
+          VER="${TAG#v}"
+          pkg="vscode/slop-chop-${VER}.vsix"
+          ( cd vscode && npx -y @vscode/vsce package --no-dependencies )
+          # The marketplace rejects a version it already holds, which is what a re-run of a
+          # shipped tag looks like, so that one rejection is a no-op rather than a failure.
+          out="$(npx -y @vscode/vsce publish --packagePath "$pkg" -p "$VSCE_PAT" 2>&1)" && rc=0 || rc=$?
+          echo "$out"
+          if [ "$rc" -ne 0 ] && echo "$out" | grep -qi "already exists"; then
+            echo "the marketplace already holds ${VER}; nothing to publish"
+            exit 0
+          fi
+          exit "$rc"
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -331,7 +361,7 @@ jobs:
           exit "$rc"
 
       # Each store publish above records its outcome instead of failing the job on the
-      # spot, so one bad credential cannot cost the other four channels their release.
+      # spot, so one bad credential cannot cost the other five channels their release.
       # This step turns those outcomes into a single verdict, naming every store that
       # failed rather than stopping at the first.
       - name: Every store that was configured must have published
@@ -340,11 +370,12 @@ jobs:
           OBSIDIAN: ${{ steps.obsidian.outcome }}
           NPM: ${{ steps.npm.outcome }}
           OPENVSX: ${{ steps.openvsx.outcome }}
+          VSCODE: ${{ steps.vscode.outcome }}
           JETBRAINS: ${{ steps.jetbrains.outcome }}
         run: |
           set -uo pipefail
           failed=""
-          for store in HOMEBREW OBSIDIAN NPM OPENVSX JETBRAINS; do
+          for store in HOMEBREW OBSIDIAN NPM OPENVSX VSCODE JETBRAINS; do
             if [ "${!store}" = "failure" ]; then
               failed="${failed} ${store}"
             fi
