@@ -412,6 +412,10 @@ body:has(#sc-app) .md-grid {
   display: none;
 }
 
+.sc-findings-split {
+  font-weight: 400;
+}
+
 .sc-findings ul {
   list-style: none;
   margin: 0.5rem 0 0.2rem;

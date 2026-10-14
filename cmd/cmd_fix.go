@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"io"
@@ -22,8 +23,16 @@ import (
 type fixReport struct {
 	// Cleaned is the rewritten text.
 	Cleaned string `json:"cleaned"`
-	// Findings is every rule match in the original input.
+	// Findings is every rule match in the original input. One with a replacement was
+	// rewritten, and one without was only flagged.
 	Findings []sanitize.Finding `json:"findings"`
+	// Remaining is what check reports on Cleaned, positioned against it. These are the
+	// tells no rule can rewrite for the author.
+	Remaining []sanitize.Finding `json:"remaining"`
+	// Score rates the original input.
+	Score sanitize.Score `json:"score"`
+	// ScoreAfter rates Cleaned on the same scale. It stays high when Remaining is not empty.
+	ScoreAfter sanitize.Score `json:"scoreAfter"`
 	// Verify is the model meaning check verdict, present only when --verify ran.
 	Verify *rewrite.Verdict `json:"verify,omitempty"`
 }
@@ -146,8 +155,20 @@ func fixOne(ctx context.Context, s *sanitize.Sanitizer, tone []string, text, pat
 		}
 		out, verdict = rw, v
 	}
+	var remaining []sanitize.Finding
+	var before, after sanitize.Score
+	if config.JSON() || len(findings) > 0 {
+		remaining, before, after = s.Check(out), s.Score(text), s.Score(out)
+	}
 	if config.JSON() {
-		report := fixReport{Cleaned: out, Findings: jsonutil.OrEmpty(findings), Verify: verdict}
+		report := fixReport{
+			Cleaned:    out,
+			Findings:   jsonutil.OrEmpty(findings),
+			Remaining:  jsonutil.OrEmpty(remaining),
+			Score:      before,
+			ScoreAfter: after,
+			Verify:     verdict,
+		}
 		if err := writeJSON(stdout, report, config.Pretty()); err != nil {
 			return err
 		}
@@ -159,7 +180,7 @@ func fixOne(ctx context.Context, s *sanitize.Sanitizer, tone []string, text, pat
 		return err
 	}
 	if !config.JSON() {
-		reportFixSummary(findings, stderr)
+		reportFixSummary(path, findings, remaining, before, after, stderr)
 	}
 	// The output written above is already the safe text: a confirmed rewrite, or the rules
 	// output when the check did not pass. --verify-strict adds a non-zero exit on that
@@ -170,21 +191,65 @@ func fixOne(ctx context.Context, s *sanitize.Sanitizer, tone []string, text, pat
 	return nil
 }
 
-// reportFixSummary says what fix did and what it left, so a run that keeps the famous
-// buzzwords does not read as a fixer that missed them.
-func reportFixSummary(findings []sanitize.Finding, stderr io.Writer) {
-	fixable := countFixable(findings)
-	flagged := len(findings) - fixable
-	switch {
-	case len(findings) == 0:
+// reportFixSummary says what fix did, what it left for the author, and how the score moved,
+// so a run that keeps the famous buzzwords or a structural tell does not read as a fixer
+// that missed them. The score is named on both sides because a chop that leaves judgment
+// calls behind leaves the score high, and the two numbers say why.
+func reportFixSummary(path string, findings, remaining []sanitize.Finding,
+	before, after sanitize.Score, stderr io.Writer) {
+	if len(findings) == 0 {
 		return
-	case flagged > 0:
-		_, _ = fmt.Fprintf(stderr,
-			"slop-chop: rewrote %d finding(s); %d flag-only remain (block words need a judgment call: --preset cleaver rewrites the common ones)\n",
-			fixable, flagged)
-	default:
-		_, _ = fmt.Fprintf(stderr, "slop-chop: rewrote %d finding(s)\n", fixable)
 	}
+	prefix := "slop-chop: "
+	if path != "" {
+		prefix += path + ": "
+	}
+	left := "nothing left"
+	if len(remaining) > 0 {
+		left = fmt.Sprintf("%d left for you (%s)", len(remaining), classCounts(remaining))
+	}
+	did := "rewrote nothing"
+	if n := countFixable(findings); n > 0 {
+		did = fmt.Sprintf("rewrote %d finding(s)", n)
+	}
+	_, _ = fmt.Fprintf(stderr, "%s%s; %s; %s\n",
+		prefix, did, left, scoreMove(before.Value, after.Value))
+	if slices.ContainsFunc(remaining, func(f sanitize.Finding) bool {
+		return strings.HasPrefix(f.Rule, "word:")
+	}) {
+		_, _ = fmt.Fprintf(stderr,
+			"%sblock words need a judgment call: --preset cleaver rewrites the common ones\n", prefix)
+	}
+}
+
+// scoreMove words the change a chop made to the score.
+func scoreMove(before, after int) string {
+	if before == after {
+		return fmt.Sprintf("score unchanged at %d", after)
+	}
+	return fmt.Sprintf("score %d -> %d", before, after)
+}
+
+// classCounts summarizes findings by rule class, most frequent first, like
+// "3 structural, 2 word". The class is the part of the rule name before the colon.
+func classCounts(findings []sanitize.Finding) string {
+	counts := make(map[string]int)
+	for _, f := range findings {
+		class, _, _ := strings.Cut(f.Rule, ":")
+		counts[class]++
+	}
+	classes := make([]string, 0, len(counts))
+	for class := range counts {
+		classes = append(classes, class)
+	}
+	slices.SortFunc(classes, func(a, b string) int {
+		return cmp.Or(cmp.Compare(counts[b], counts[a]), strings.Compare(a, b))
+	})
+	parts := make([]string, len(classes))
+	for i, class := range classes {
+		parts[i] = fmt.Sprintf("%d %s", counts[class], class)
+	}
+	return strings.Join(parts, ", ")
 }
 
 // rewriteAndVerify runs the model rewrite over rulesOut and re-checks it against the

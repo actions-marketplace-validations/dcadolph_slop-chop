@@ -132,9 +132,13 @@ slop-chop fix --rewrite notes.md
 slop-chop fix --rewrite --verify notes.md
 ```
 
-`check --json` prints a `{"findings": [...]}` object to stdout, and `fix --json` adds the
-cleaned text as `{"cleaned": "...", "findings": [...]}`. Each finding carries the rule,
-the matched text, the suggested replacement, and a line and column.
+`check --json` prints a `{"findings": [...]}` object to stdout. `fix --json` returns
+`{"cleaned": "...", "findings": [...], "remaining": [...], "score": {...}, "scoreAfter": {...}}`.
+Each finding carries the rule, the matched text, the suggested replacement, and a line and
+column. A finding with a replacement was rewritten, and one without was only flagged.
+`remaining` is what `check` reports on the cleaned text, the tells no rule can rewrite for
+you. Without `--json`, `fix` prints one line on stderr saying what it rewrote, what it left
+for you, and how the score moved.
 
 ## Modes
 

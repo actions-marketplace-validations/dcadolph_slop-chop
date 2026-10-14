@@ -2,13 +2,18 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+
 	"github.com/dcadolph/slop-chop/rewrite"
+	"github.com/dcadolph/slop-chop/sanitize"
 )
 
 // fakeRewrite swaps rewritePass to return reply verbatim for the duration of a test.
@@ -491,5 +496,138 @@ func TestFeedbackNotes(t *testing.T) {
 	clipped := feedbackNotes([]rewrite.Issue{{Note: long}})
 	if len(clipped) != 1 || len([]rune(clipped[0])) > maxFeedbackField+1 {
 		t.Errorf("clipped note length = %d, want at most %d", len([]rune(clipped[0])), maxFeedbackField+1)
+	}
+}
+
+// TestFixSummary checks the line fix prints on stderr: what it rewrote, what it left for the
+// author, and how the score moved. The score digits are matched loosely, since the scoring
+// contract is free to move them.
+func TestFixSummary(t *testing.T) {
+	tests := []struct {
+		In       string
+		WantLine string
+		WantHint bool
+	}{{ // Test 0: Everything fixable leaves nothing and no hint.
+		In:       "In summary, a plan. Furthermore, it works.",
+		WantLine: `^slop-chop: rewrote 2 finding\(s\); nothing left; score \d+ -> \d+\n$`,
+	}, { // Test 1: A rewrite beside a block word the rules only flag.
+		In:       "In summary, a robust plan.",
+		WantLine: `^slop-chop: rewrote 1 finding\(s\); 1 left for you \(1 word\); score \d+ -> \d+\n`,
+		WantHint: true,
+	}, { // Test 2: A structural tell nothing can rewrite leaves the score where it was.
+		In:       "The best part? It just works.",
+		WantLine: `^slop-chop: rewrote nothing; 1 left for you \(1 structural\); score unchanged at \d+\n$`,
+	}, { // Test 3: Clean input prints nothing.
+		In:       "Plain words, plainly put.",
+		WantLine: `^$`,
+	}}
+	for testNum, test := range tests {
+		t.Run(fmt.Sprintf("test %d", testNum), func(t *testing.T) {
+			_, stderr, err := runCLI(t, []string{"fix"}, test.In)
+			if err != nil {
+				t.Fatalf("fix: %v", err)
+			}
+			if !regexp.MustCompile(test.WantLine).MatchString(stderr) {
+				t.Errorf("stderr = %q, want a match for %s", stderr, test.WantLine)
+			}
+			hint := strings.Contains(stderr, "block words need a judgment call")
+			if hint != test.WantHint {
+				t.Errorf("block word hint = %v, want %v (stderr %q)", hint, test.WantHint, stderr)
+			}
+		})
+	}
+}
+
+// TestFixSummaryNamesFile checks that --write puts each file's name in its summary, so a run
+// over several files says which line belongs to which.
+func TestFixSummaryNamesFile(t *testing.T) {
+	path := writeTemp(t, t.TempDir(), "notes.md", "In summary, a robust plan.")
+	_, stderr, err := runCLI(t, []string{"fix", "-w", path}, "")
+	if err != nil {
+		t.Fatalf("fix: %v", err)
+	}
+	if want := "slop-chop: " + path + ": rewrote 1 finding(s)"; !strings.Contains(stderr, want) {
+		t.Errorf("stderr = %q, want it to contain %q", stderr, want)
+	}
+}
+
+// TestFixJSONSeparatesFixedFromRemaining checks that the JSON report names what was
+// rewritten, what is left in the cleaned text, and the score on both sides, each stamped
+// with the scoring version that produced it.
+func TestFixJSONSeparatesFixedFromRemaining(t *testing.T) {
+	out, _, err := runCLI(t, []string{"fix", "--json"}, "In summary, a robust plan.")
+	if err != nil {
+		t.Fatalf("fix: %v", err)
+	}
+	var got fixReport
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatalf("decode %q: %v", out, err)
+	}
+	var fixed, flagged int
+	for _, f := range got.Findings {
+		if f.Replacement != nil {
+			fixed++
+		} else {
+			flagged++
+		}
+	}
+	if diff := cmp.Diff([]int{1, 1}, []int{fixed, flagged}); diff != "" {
+		t.Errorf("fixed and flagged findings mismatch (-want +got):\n%s", diff)
+	}
+	var left []string
+	for _, f := range got.Remaining {
+		left = append(left, f.Rule)
+	}
+	if diff := cmp.Diff([]string{"word:robust"}, left); diff != "" {
+		t.Errorf("remaining rules mismatch (-want +got):\n%s", diff)
+	}
+	if got.Score.ScoringVersion != sanitize.ScoringVersion ||
+		got.ScoreAfter.ScoringVersion != sanitize.ScoringVersion {
+		t.Errorf("scoring versions = %d and %d, want %d on both",
+			got.Score.ScoringVersion, got.ScoreAfter.ScoringVersion, sanitize.ScoringVersion)
+	}
+	if got.ScoreAfter.Value > got.Score.Value {
+		t.Errorf("score rose from %d to %d after the chop", got.Score.Value, got.ScoreAfter.Value)
+	}
+}
+
+// TestFixJSONRemainingIsAnEmptyList checks that a fully fixed text reports an empty
+// remaining list rather than null, so a caller can take its length without a nil check.
+func TestFixJSONRemainingIsAnEmptyList(t *testing.T) {
+	out, _, err := runCLI(t, []string{"fix", "--json"}, "In summary, a plan.")
+	if err != nil {
+		t.Fatalf("fix: %v", err)
+	}
+	if !strings.Contains(out, `"remaining":[]`) {
+		t.Errorf("report = %q, want an empty remaining list", out)
+	}
+}
+
+// TestClassCounts checks the per-class summary of what is left for the author.
+func TestClassCounts(t *testing.T) {
+	tests := []struct {
+		In         []sanitize.Finding
+		WantResult string
+	}{{ // Test 0: One class.
+		In:         []sanitize.Finding{{Rule: "word:robust"}},
+		WantResult: "1 word",
+	}, { // Test 1: The most frequent class comes first.
+		In: []sanitize.Finding{
+			{Rule: "structural:fragment-reveal"}, {Rule: "word:robust"}, {Rule: "word:seamless"},
+		},
+		WantResult: "2 word, 1 structural",
+	}, { // Test 2: Ties break alphabetically and a colonless rule is its own class.
+		In:         []sanitize.Finding{{Rule: "semicolon"}, {Rule: "phrase:in summary,"}},
+		WantResult: "1 phrase, 1 semicolon",
+	}, { // Test 3: No findings give an empty summary.
+		In:         nil,
+		WantResult: "",
+	}}
+	for testNum, test := range tests {
+		t.Run(fmt.Sprintf("test %d", testNum), func(t *testing.T) {
+			if diff := cmp.Diff(test.WantResult, classCounts(test.In)); diff != "" {
+				t.Errorf("classCounts mismatch (-want +got):\n%s", diff)
+			}
+		})
 	}
 }

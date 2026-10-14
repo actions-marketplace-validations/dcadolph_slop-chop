@@ -14,6 +14,7 @@ res.output;           // "We use many solid tools."
 res.score.value;      // 80, the input
 res.scoreAfter.value; // 0, the output
 res.findings;         // every tell, with rule, match, and offsets
+res.remaining;        // the tells left in the output for you to reword by hand
 ```
 
 Rate without rewriting:

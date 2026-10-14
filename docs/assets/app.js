@@ -241,6 +241,7 @@
     const clearBtn = $("sc-clear");
     const findingsBox = $("sc-findings");
     const findingsCount = $("sc-findings-count");
+    const findingsSplit = $("sc-findings-split");
     const findingsList = $("sc-findings-list");
     const drawer = $("sc-drawer");
     const burger = $("sc-settings-btn");
@@ -686,6 +687,14 @@
 
     const scorePop = $("sc-score-pop");
 
+    /* moved words how the score changed, so a chop that left the number alone never claims
+       it came down. What a chop leaves behind is the author's call, and the number says so. */
+    function moved(before, after, left) {
+      if (after < before) return "down from " + before;
+      if (after > before) return "up from " + before;
+      return left ? "unchanged: what is left needs your judgment" : "unchanged";
+    }
+
     /* renderScore paints the chip and refreshes the breakdown behind it. The engine
        hands over the raw ingredients, so the popover shows its work. */
     function renderScore(res) {
@@ -718,8 +727,8 @@
       if (after) {
         scoreAfter.textContent = "→ " + after.value;
         scoreAfter.className = "sc-score sc-score-after " + bandClass(res.bandAfter);
-        scoreAfter.title =
-          "Slop score after the chop: " + after.value + " of 100, down from " + s.value + ".";
+        const verdict = moved(s.value, after.value, splitFindings(res.findings, res.remaining).left);
+        scoreAfter.title = "Slop score after the chop: " + after.value + " of 100, " + verdict + ".";
         scoreAfter.hidden = false;
       } else {
         scoreAfter.hidden = true;
@@ -777,14 +786,29 @@
       chop();
     }
 
-    function renderFindings(findings) {
+    /* splitFindings says how many tells the chop rewrote and how many it left for the
+       author. A finding with a replacement was rewritten. What is left is what a check
+       reports on the cleaned text, so the number matches what the next run would find. A
+       cached engine that predates the field falls back to the flag-only findings. */
+    function splitFindings(findings, remaining) {
+      const rewritten = (f) => f.replacement !== undefined && f.replacement !== null;
+      const fixed = findings.filter(rewritten).length;
+      const left = Array.isArray(remaining) ? remaining.length : findings.length - fixed;
+      return { fixed, left };
+    }
+
+    function renderFindings(findings, remaining) {
       findingsList.textContent = "";
       if (!findings.length) {
         findingsBox.hidden = true;
+        findingsSplit.textContent = "";
         return;
       }
       const word = findings.length === 1 ? "tell" : "tells";
       findingsCount.textContent = findings.length + " " + word;
+      const { fixed, left } = splitFindings(findings, remaining);
+      findingsSplit.textContent =
+        ": " + fixed + " fixed, " + (left ? left + " left for you" : "none left");
       for (const f of findings.slice(0, MAX_ROWS)) {
         const li = document.createElement("li");
         const pos = document.createElement("code");
@@ -962,7 +986,7 @@
       renderMarks(text, res.findings);
       renderOutMarks(text, res.output);
       renderScore(res);
-      renderFindings(res.findings);
+      renderFindings(res.findings, res.remaining);
     }
 
     let timer = 0;

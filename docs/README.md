@@ -69,7 +69,7 @@ hide:
 <p class="sc-legend" aria-hidden="true"><span class="sc-swatch sc-swatch-slop"></span>Amber is slop found.<span class="sc-swatch sc-swatch-fix"></span>Green is what changed.</p>
 <p id="sc-status" class="sc-status" hidden></p>
 <details id="sc-findings" class="sc-findings" hidden>
-<summary><span id="sc-findings-count"></span></summary>
+<summary><span id="sc-findings-count"></span><span id="sc-findings-split" class="sc-findings-split"></span></summary>
 <ul id="sc-findings-list"></ul>
 </details>
 <div id="sc-drawer" class="sc-drawer" hidden>
