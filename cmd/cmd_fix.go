@@ -13,6 +13,7 @@ import (
 
 	"github.com/dcadolph/slop-chop/cmd/config"
 	"github.com/dcadolph/slop-chop/internal/jsonutil"
+	"github.com/dcadolph/slop-chop/internal/source"
 	"github.com/dcadolph/slop-chop/rewrite"
 	"github.com/dcadolph/slop-chop/sanitize"
 )
@@ -100,7 +101,7 @@ func runFix(cmd *cobra.Command, args []string) error {
 
 	if config.Write() {
 		for _, path := range args {
-			if sourceFile(path) {
+			if source.Is(path) {
 				warnSourceSkip(cmd.ErrOrStderr(), path)
 				continue
 			}
@@ -119,7 +120,7 @@ func runFix(cmd *cobra.Command, args []string) error {
 	if len(args) == 1 {
 		path = args[0]
 	}
-	if path != "" && sourceFile(path) {
+	if path != "" && source.Is(path) {
 		return fmt.Errorf("%s is source code, not prose; pipe it through stdin to fix it anyway", path)
 	}
 	text, err := readInput(path, cmd.InOrStdin())

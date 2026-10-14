@@ -1,6 +1,7 @@
-package cmd
+package source
 
 import (
+	"bytes"
 	"path/filepath"
 	"strings"
 )
@@ -70,17 +71,17 @@ func styleForPath(path string) (commentStyle, bool) {
 	if s, ok := commentStyles[strings.ToLower(filepath.Ext(path))]; ok {
 		return s, true
 	}
-	if sourceNames[strings.ToLower(filepath.Base(path))] {
+	if names[strings.ToLower(filepath.Base(path))] {
 		return hashStyle, true
 	}
 	return commentStyle{}, false
 }
 
-// maskSource returns text with everything except comment content blanked to spaces.
+// Mask returns text with everything except comment content blanked to spaces.
 // Line breaks survive, so the result is exactly as long as the input and every offset
 // in it points at the same place in the original file. The second result is false when
 // the file's type has no comments to scan.
-func maskSource(path, text string) (string, bool) {
+func Mask(path, text string) (string, bool) {
 	style, ok := styleForPath(path)
 	if !ok {
 		return "", false
@@ -97,7 +98,35 @@ func maskSource(path, text string) (string, bool) {
 	for i := 0; i < len(text); {
 		i = nextToken(text, out, i, style)
 	}
+	unindent(out)
 	return string(out), true
+}
+
+// unindent turns the fourth blank in front of comment text into a tab on any line that
+// would otherwise open with four or more spaces. The prose engine reads four leading spaces
+// after a blank line as a markdown indented code block and skips it, and every code line is
+// blank in the mask, so that hid each comment nested inside a function or a block. The tab
+// breaks the run of spaces, so the line is not an indent, yet it is still blank to the
+// engine's sentence-start check, so the first word of a comment is capitalized correctly
+// after a fix. One byte changes in place, so offsets still point at the real file. A line
+// with no comment text on it stays all spaces, because the engine reads those as paragraph
+// breaks.
+func unindent(out []byte) {
+	for start := 0; start < len(out); {
+		n := bytes.IndexByte(out[start:], '\n')
+		if n < 0 {
+			n = len(out) - start
+		}
+		line := out[start : start+n]
+		lead := 0
+		for lead < len(line) && line[lead] == ' ' {
+			lead++
+		}
+		if lead >= 4 && len(bytes.TrimRight(line[lead:], "\r")) > 0 {
+			line[3] = '\t'
+		}
+		start += n + 1
+	}
 }
 
 // nextToken consumes one lexical token starting at i, copying comment content into out,

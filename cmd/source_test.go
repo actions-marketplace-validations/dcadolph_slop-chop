@@ -1,44 +1,13 @@
 package cmd
 
 import (
+	"encoding/json"
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
-
-// TestSourceFile checks the gate that keeps prose rules away from code and data files.
-func TestSourceFile(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		In         string
-		WantResult bool
-	}{{ // Test 0: Go source is code.
-		In: "main.go", WantResult: true,
-	}, { // Test 1: extension match is case-insensitive.
-		In: "dir/APP.PY", WantResult: true,
-	}, { // Test 2: a Makefile has no extension but is code.
-		In: "sub/Makefile", WantResult: true,
-	}, { // Test 3: YAML is machine-read data.
-		In: "config.yaml", WantResult: true,
-	}, { // Test 4: Markdown is prose.
-		In: "README.md", WantResult: false,
-	}, { // Test 5: plain text is prose.
-		In: "notes.txt", WantResult: false,
-	}, { // Test 6: an extensionless prose file passes.
-		In: "README", WantResult: false,
-	}}
-	for testNum, test := range tests {
-		t.Run(fmt.Sprintf("test %d", testNum), func(t *testing.T) {
-			t.Parallel()
-			if got := sourceFile(test.In); got != test.WantResult {
-				t.Errorf("sourceFile(%q) = %v, want %v", test.In, got, test.WantResult)
-			}
-		})
-	}
-}
 
 // TestCheckScansComments checks that check on a source file reads the comments and only
 // the comments: a tell in a comment is flagged at its real position, while the same word
@@ -70,6 +39,44 @@ func TestCheckScansComments(t *testing.T) {
 	}
 	if strings.Contains(stderr, goFile+":5:2") {
 		t.Errorf("stderr = %q, want no finding for the identifier on line 5", stderr)
+	}
+}
+
+// TestCheckScansIndentedComments checks that a comment nested inside a function is read
+// like one at the top of the file. The mask once left such a comment indented four spaces,
+// which the prose engine skipped as an indented code block, so only top-level comments
+// were ever scanned.
+func TestCheckScansIndentedComments(t *testing.T) {
+	dir := t.TempDir()
+	src := "package main\n" +
+		"\n" +
+		"func main() {\n" +
+		"\t// In summary, this delivers a comprehensive solution.\n" +
+		"\tx := 1\n" +
+		"\t_ = x\n" +
+		"}\n"
+	goFile := writeTemp(t, dir, "main.go", src)
+	_, stderr, err := runCLI(t, []string{"check", goFile}, "")
+	if !errors.Is(err, errFindings) {
+		t.Fatalf("err = %v, want errFindings for a tell in an indented comment", err)
+	}
+	if !strings.Contains(stderr, goFile+":4:") || !strings.Contains(stderr, "word:comprehensive") {
+		t.Errorf("stderr = %q, want word:comprehensive reported on line 4", stderr)
+	}
+}
+
+// TestCheckAsIndentedCommentKeepsSentenceStart checks that the first word of an indented
+// comment is still read as the start of a sentence. Dropping an opener like "It is
+// important to note that" leaves the next word to open the sentence, so its replacement
+// must be capitalized, as it is for a comment at the top of the file.
+func TestCheckAsIndentedCommentKeepsSentenceStart(t *testing.T) {
+	src := "package main\n\nfunc f() {\n\t// It is important to note that we delve into the map here.\n}\n"
+	stdout, _, err := runCLI(t, []string{"check", "--json", "--as", ".go"}, src)
+	if !errors.Is(err, errFindings) {
+		t.Fatalf("err = %v, want errFindings", err)
+	}
+	if !strings.Contains(stdout, `"match":"It is important to note that w","replacement":"W"`) {
+		t.Errorf("stdout = %s, want the opener replaced by a capital W", stdout)
 	}
 }
 
@@ -128,5 +135,77 @@ func TestScoreScansComments(t *testing.T) {
 	}
 	if !strings.Contains(stdout, sloppy+": ") || !strings.Contains(stdout, terse+": 0") {
 		t.Errorf("stdout = %q, want a high score for the sloppy comments and 0 for the terse ones", stdout)
+	}
+}
+
+// TestCheckAsReadsStdinComments checks that --as reads stdin as a source file of the named
+// type: findings come from the comments alone and carry the offsets of the original text,
+// which is how an editor draws them on an unsaved buffer.
+func TestCheckAsReadsStdinComments(t *testing.T) {
+	src := "package main\n" +
+		"\n" +
+		"// This delivers a comprehensive solution.\n" +
+		"func main() {\n" +
+		"\tcomprehensive := 1     // twelve\n" +
+		"\ts := \"a robust plan\"\n" +
+		"\t_, _ = comprehensive, s\n" +
+		"}\n"
+	for _, as := range []string{".go", "go", "main.go"} {
+		t.Run(as, func(t *testing.T) {
+			stdout, _, err := runCLI(t, []string{"check", "--json", "--as", as}, src)
+			if !errors.Is(err, errFindings) {
+				t.Fatalf("err = %v, want errFindings for a tell in a comment", err)
+			}
+			var report struct {
+				Findings []struct {
+					Rule   string `json:"rule"`
+					Match  string `json:"match"`
+					Offset int    `json:"offset"`
+					Line   int    `json:"line"`
+				} `json:"findings"`
+			}
+			if err := json.Unmarshal([]byte(stdout), &report); err != nil {
+				t.Fatalf("stdout is not JSON: %v\n%s", err, stdout)
+			}
+			if len(report.Findings) != 1 {
+				t.Fatalf("findings = %+v, want exactly the comment's tell", report.Findings)
+			}
+			got := report.Findings[0]
+			if got.Rule != "word:comprehensive" || got.Line != 3 {
+				t.Errorf("finding = %+v, want word:comprehensive on line 3", got)
+			}
+			if src[got.Offset:got.Offset+len(got.Match)] != got.Match {
+				t.Errorf("offset %d does not point at %q in the original text", got.Offset, got.Match)
+			}
+		})
+	}
+}
+
+// TestCheckAsRejectsUnknownType checks that a type with no comment syntax fails loudly
+// instead of quietly scanning the code as prose.
+func TestCheckAsRejectsUnknownType(t *testing.T) {
+	_, _, err := runCLI(t, []string{"check", "--as", ".txt"}, "a comprehensive plan\n")
+	if err == nil || !strings.Contains(err.Error(), "no comment syntax") {
+		t.Errorf("err = %v, want a no-comment-syntax error", err)
+	}
+}
+
+// TestScoreAsRatesComments checks that score --as rates the comments of piped source and
+// nothing else, so the same code with and without a slop comment scores differently.
+func TestScoreAsRatesComments(t *testing.T) {
+	sloppy := "x = 1  # In summary, this comprehensive solution leverages robust synergy.\n"
+	stdout, _, err := runCLI(t, []string{"score", "--as", ".py"}, sloppy)
+	if err != nil {
+		t.Fatalf("err = %v, want nil without a gate", err)
+	}
+	if strings.HasPrefix(stdout, "0 ") {
+		t.Errorf("stdout = %q, want a nonzero score for the sloppy comment", stdout)
+	}
+	stdout, _, err = runCLI(t, []string{"score", "--as", ".py"}, "comprehensive = 1\n")
+	if err != nil {
+		t.Fatalf("err = %v, want nil without a gate", err)
+	}
+	if !strings.HasPrefix(stdout, "0 ") {
+		t.Errorf("stdout = %q, want 0 for code with no comment", stdout)
 	}
 }
