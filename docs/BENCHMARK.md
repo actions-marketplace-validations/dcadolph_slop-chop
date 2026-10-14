@@ -291,7 +291,7 @@ from those nouns. The record of the whole measurement, with every feature tried,
 ## Limitations, plainly
 
 **The corpus grades the engine on its own homework.** The passages were written during
-the audits that also shaped the rules, so recall of 0.98 here demonstrates rule
+the audits that also shaped the rules, so recall of 0.99 here demonstrates rule
 coverage of known registers, not generalization to arbitrary text in the wild. The
 numbers are honest about what they measure, and what they measure is narrower than "any
 AI text anywhere."
