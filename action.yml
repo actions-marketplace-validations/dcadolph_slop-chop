@@ -23,14 +23,21 @@ inputs:
     required: false
     default: ""
   mode:
-    description: check flags slop and fails the run. fix rewrites the files in place.
+    description: check lists every finding and fails the run when a file's slop score is
+      above max. fix rewrites the files in place.
     required: false
     default: check
   max:
-    description: Fail the run when any file's slop score is above this 0-100 value.
-      Runs after the mode step. Leave empty for no score gate.
+    description: Fail the run when any file's slop score is above this 0-100 value. The
+      default of 25 is the line where human READMEs almost never land. Use 100 to turn
+      the score gate off.
     required: false
-    default: ""
+    default: "25"
+  strict:
+    description: In check mode, also fail on any single finding, including whitespace and
+      punctuation tidy-ups. By default only the score gate fails the run.
+    required: false
+    default: "false"
   commit:
     description: In fix mode, commit and push the rewritten files. The workflow needs
       contents write permission for the push to land.
@@ -64,6 +71,7 @@ runs:
         PRESET: ${{ inputs.preset }}
         MODE: ${{ inputs.mode }}
         MAX: ${{ inputs.max }}
+        STRICT: ${{ inputs.strict }}
       run: |
         read -ra files <<< "$FILES"
         args=()
@@ -75,7 +83,11 @@ runs:
             rc=0
             for f in "${files[@]}"; do
               echo "::group::slop-chop check $f"
-              "${RUNNER_TEMP}/slop-chop" check "${args[@]}" "$f" || rc=1
+              if [ "$STRICT" = "true" ]; then
+                "${RUNNER_TEMP}/slop-chop" check "${args[@]}" "$f" || rc=1
+              else
+                "${RUNNER_TEMP}/slop-chop" check "${args[@]}" "$f" || true
+              fi
               echo "::endgroup::"
             done
             if [ -n "$MAX" ]; then

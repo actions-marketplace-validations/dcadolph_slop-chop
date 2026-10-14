@@ -130,6 +130,40 @@ jobs:
             exit 1
           fi
 
+  # The default gate is the slop score, not the single finding. Whitespace and punctuation
+  # tidy-ups are listed but do not fail a run, because two in three ordinary human READMEs
+  # carry at least one and almost none score high. Strict mode keeps the any-finding
+  # behavior for people who want it.
+  action-gates-on-score:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Write a file with a whitespace tidy-up and no tells
+        run: printf 'A plain sentence  with a double space.\n' > tidy.md
+      - name: The default gate lists the tidy-up and lets it through
+        uses: ./
+        with:
+          files: tidy.md
+      - name: Strict mode fails the same file
+        id: strict
+        continue-on-error: true
+        uses: ./
+        with:
+          files: tidy.md
+          strict: "true"
+      - name: Strict mode must have failed
+        run: test "${{ steps.strict.outcome }}" = "failure"
+      - name: Write a file dense with tells
+        run: printf 'In summary, a comprehensive result. Furthermore, it is important to note that we delve into a robust, seamless framework.\n' > dense.md
+      - name: The default gate fails the dense file
+        id: dense
+        continue-on-error: true
+        uses: ./
+        with:
+          files: dense.md
+      - name: The default gate must have failed
+        run: test "${{ steps.dense.outcome }}" = "failure"
+
   docs-pass-their-own-check:
     needs: build
     runs-on: ubuntu-latest
