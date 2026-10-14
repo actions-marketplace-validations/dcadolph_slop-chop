@@ -137,12 +137,19 @@ type chopInput struct {
 type chopOutput struct {
 	// Text is the cleaned text.
 	Text string `json:"text"`
-	// Findings is every tell the rules found in the input.
+	// Findings is every tell the rules found in the input. One with a replacement was
+	// rewritten, and one without was only flagged.
 	Findings []sanitize.Finding `json:"findings"`
+	// Remaining is what a check reports on the cleaned text, positioned against it. These
+	// are the tells no rule can rewrite, left for the caller to reword by hand.
+	Remaining []sanitize.Finding `json:"remaining"`
 	// Score rates the input from 0 to 100 by how densely it carries the profile's patterns.
 	Score int `json:"score"`
 	// ScoreAfter is the same rating for the cleaned text, so the caller sees the movement.
 	ScoreAfter int `json:"scoreAfter"`
+	// ScoringVersion is the revision of the scoring rules behind both scores. Scores
+	// compare only within one version.
+	ScoringVersion int `json:"scoringVersion"`
 	// ModelRewrite reports whether the optional model pass ran.
 	ModelRewrite bool `json:"modelRewrite"`
 }
@@ -164,6 +171,9 @@ type checkOutput struct {
 	Findings []sanitize.Finding `json:"findings"`
 	// Score rates the text from 0 to 100 by how densely it carries the profile's patterns.
 	Score int `json:"score"`
+	// ScoringVersion is the revision of the scoring rules behind Score. Scores compare only
+	// within one version.
+	ScoringVersion int `json:"scoringVersion"`
 }
 
 // driftInput is the argument object of the drift tool.
@@ -206,7 +216,8 @@ func (srv *Server) register() {
 			"\"leverage\", and \"robust\". The rules pass is deterministic, free, and runs " +
 			"on this machine with nothing uploaded, so the same input always gives the same " +
 			"output. Markdown code blocks and inline backtick spans are left alone. Returns " +
-			"the cleaned text, the tells it found, and the slop score before and after.",
+			"the cleaned text, the tells it found, the tells it left for you to reword by " +
+			"hand, and the slop score before and after.",
 	}, srv.chop)
 
 	mcpsdk.AddTool(srv.sdk, &mcpsdk.Tool{
@@ -217,7 +228,8 @@ func (srv *Server) register() {
 			"finding carries the rule that matched, the exact text, its line and column, and " +
 			"the swap the chop tool would make. It also returns a lint score from 0 to 100 " +
 			"measuring how densely those patterns appear. The score is not a reading on who " +
-			"wrote the text and must not be reported as one. Deterministic, free, and local: " +
+			"wrote the text and must not be reported as one, and it compares only within one " +
+			"scoring version, which the reply names. Deterministic, free, and local: " +
 			"nothing is uploaded.",
 	}, srv.check)
 
@@ -262,11 +274,13 @@ func (srv *Server) chop(ctx context.Context, _ *mcpsdk.CallToolRequest, in chopI
 		}
 	}
 	out := chopOutput{
-		Text:         cleaned,
-		Findings:     jsonutil.OrEmpty(findings),
-		Score:        san.Score(in.Text).Value,
-		ScoreAfter:   san.Score(cleaned).Value,
-		ModelRewrite: in.ModelRewrite,
+		Text:           cleaned,
+		Findings:       jsonutil.OrEmpty(findings),
+		Remaining:      jsonutil.OrEmpty(san.Check(cleaned)),
+		Score:          san.Score(in.Text).Value,
+		ScoreAfter:     san.Score(cleaned).Value,
+		ScoringVersion: sanitize.ScoringVersion,
+		ModelRewrite:   in.ModelRewrite,
 	}
 	return &mcpsdk.CallToolResult{
 		Content: []mcpsdk.Content{&mcpsdk.TextContent{Text: cleaned}},
@@ -281,7 +295,11 @@ func (srv *Server) check(_ context.Context, _ *mcpsdk.CallToolRequest, in checkI
 		return nil, checkOutput{}, err
 	}
 	findings := san.Check(in.Text)
-	return nil, checkOutput{Findings: jsonutil.OrEmpty(findings), Score: san.Score(in.Text).Value}, nil
+	return nil, checkOutput{
+		Findings:       jsonutil.OrEmpty(findings),
+		Score:          san.Score(in.Text).Value,
+		ScoringVersion: sanitize.ScoringVersion,
+	}, nil
 }
 
 // presets lists the built-in preset names.

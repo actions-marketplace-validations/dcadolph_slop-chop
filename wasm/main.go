@@ -46,6 +46,10 @@ type chopResult struct {
 	// ScoreAfter rates the cleaned output on the same scale, so the page can show how far
 	// the chop moved the needle.
 	ScoreAfter sanitize.Score `json:"scoreAfter"`
+	// Remaining is what a check reports on the cleaned output: the tells no rule can
+	// rewrite, left for the author. A finding with a replacement was fixed, so the page
+	// counts those from Findings and these from here.
+	Remaining []sanitize.Finding `json:"remaining"`
 	// Band is the published range the original score falls in, so a caller that colors or
 	// labels the score uses the engine's boundaries rather than its own copy of them.
 	Band sanitize.Band `json:"band"`
@@ -96,6 +100,7 @@ func chop(_ js.Value, args []js.Value) any {
 		Findings:   jsonutil.OrEmpty(findings),
 		Score:      score,
 		ScoreAfter: after,
+		Remaining:  jsonutil.OrEmpty(s.Check(out)),
 		Band:       score.Band(),
 		BandAfter:  after.Band(),
 	})

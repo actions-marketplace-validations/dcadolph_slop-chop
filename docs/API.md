@@ -29,10 +29,16 @@ curl -s https://api.slop-chop.com/chop \
 {
   "output": "We use many solid tools.",
   "findings": [ { "rule": "phrase:in summary,", "match": "In summary, w", "offset": 0 } ],
-  "score":      { "value": 80 },
-  "scoreAfter": { "value": 0 }
+  "remaining": [],
+  "score":      { "value": 80, "scoringVersion": 1 },
+  "scoreAfter": { "value": 0, "scoringVersion": 1 }
 }
 ```
+
+A finding with a `replacement` was rewritten and one without was only flagged. `remaining`
+is what a check reports on the output, the tells no rule can rewrite, so a score that stays
+high after a chop comes with the list of what is left. Compare scores only within one
+`scoringVersion`, see [Scoring versions](SCORING.md).
 
 The body takes the same options as the npm package:
 

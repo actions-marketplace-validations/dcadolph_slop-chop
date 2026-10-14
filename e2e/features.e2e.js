@@ -64,6 +64,29 @@ async function main() {
   log("score chips colored by engine band:", chips.beforeValue, band(chips.beforeValue), "->",
     chips.afterValue, band(chips.afterValue));
 
+  // Step 4c: the findings bar says how many tells the chop rewrote and how many it left for
+  // the author, and the after chip never claims a drop that did not happen.
+  const readSplit = () =>
+    page.evaluate(() => ({
+      text: document.getElementById("sc-findings-split").textContent,
+      title: document.getElementById("sc-score-after").title,
+    }));
+  const allFixed = await readSplit();
+  if (!/^: \d+ fixed, none left$/.test(allFixed.text) || !/, down from \d+\.$/.test(allFixed.title)) {
+    throw new Error("sample split or chip title wrong: " + JSON.stringify(allFixed));
+  }
+  const sampleText = await page.inputValue("#sc-in");
+  await page.fill("#sc-in", "The best part? It just works.");
+  await page.waitForTimeout(400);
+  const leftOver = await readSplit();
+  if (leftOver.text !== ": 0 fixed, 1 left for you" ||
+      !leftOver.title.includes("unchanged: what is left needs your judgment")) {
+    throw new Error("flag-only split or chip title wrong: " + JSON.stringify(leftOver));
+  }
+  await page.fill("#sc-in", sampleText);
+  await page.waitForTimeout(400);
+  log("findings split:", JSON.stringify(allFixed.text), "then", JSON.stringify(leftOver.text));
+
   // Step 5: the main thread stays free during a giant chop.
   const big = "In summary, a robust—seamless—plan; it works. ".repeat(2000);
   await page.evaluate((t) => {

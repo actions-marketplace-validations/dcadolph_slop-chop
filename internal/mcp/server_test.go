@@ -79,6 +79,7 @@ func TestChop(t *testing.T) {
 		WantText       string
 		WantErr        string
 		WantFindings   int
+		WantRemaining  int
 		WantScoreDrops bool
 	}{{ // Test 0: the rules swap the word and the em-dash, and the score comes down.
 		Args:           map[string]any{"text": "we leverage it—daily, and we ship it"},
@@ -112,6 +113,11 @@ func TestChop(t *testing.T) {
 	}, { // Test 8: text over the size cap is refused before any work is done.
 		Args:    map[string]any{"text": strings.Repeat("a", maxTextBytes+1)},
 		WantErr: "over the",
+	}, { // Test 9: a block word the rules only flag stays in the text and is reported as remaining.
+		Args:          map[string]any{"text": "we ship the synergy"},
+		WantText:      "we ship the synergy",
+		WantFindings:  1,
+		WantRemaining: 1,
 	}}
 	for testNum, test := range tests {
 		t.Run(fmt.Sprintf("test %d", testNum), func(t *testing.T) {
@@ -139,6 +145,12 @@ func TestChop(t *testing.T) {
 			}
 			if len(out.Findings) != test.WantFindings {
 				t.Errorf("findings = %d, want %d: %+v", len(out.Findings), test.WantFindings, out.Findings)
+			}
+			if len(out.Remaining) != test.WantRemaining {
+				t.Errorf("remaining = %d, want %d: %+v", len(out.Remaining), test.WantRemaining, out.Remaining)
+			}
+			if out.ScoringVersion != sanitize.ScoringVersion {
+				t.Errorf("scoringVersion = %d, want %d", out.ScoringVersion, sanitize.ScoringVersion)
 			}
 			if out.ModelRewrite {
 				t.Error("modelRewrite = true, want false when the call did not ask for it")
@@ -300,6 +312,9 @@ func TestCheck(t *testing.T) {
 			if out.Score < test.WantScoreMin {
 				t.Errorf("score = %d, want at least %d", out.Score, test.WantScoreMin)
 			}
+			if out.ScoringVersion != sanitize.ScoringVersion {
+				t.Errorf("scoringVersion = %d, want %d", out.ScoringVersion, sanitize.ScoringVersion)
+			}
 		})
 	}
 }
@@ -345,6 +360,7 @@ func testSanitizers() SanitizerFunc {
 		p := sanitize.Profile{
 			CharReplace:    map[string]string{"—": ", "},
 			WordReplace:    map[string]string{"leverage": "use"},
+			BlockWords:     []string{"synergy"},
 			CollapseSpaces: true,
 			Tone:           []string{"dry"},
 			Dialect:        sanitize.Dialect(dialect),

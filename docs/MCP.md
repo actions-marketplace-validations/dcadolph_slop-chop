@@ -37,6 +37,11 @@ below. `drift` takes `text` and compares it against the fingerprint you measured
 before handing it over. Without a fingerprint it says so and measures nothing. See
 [VOICE.md](VOICE.md).
 
+`chop` returns a `remaining` list beside its findings: the tells it left in the cleaned text,
+which no rule can reword, so an agent knows what to fix by hand. Both `chop` and `check`
+return a `scoringVersion`, since scores compare only within one version. See
+[Scoring versions](SCORING.md).
+
 Ask for a clean in whatever words you use. "Chop the slop out of this," "make this sound like a
 person wrote it," and "strip the AI tells from my draft" all reach the same tool.
 
