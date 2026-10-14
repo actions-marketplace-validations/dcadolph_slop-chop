@@ -155,8 +155,10 @@ Source code gets its own treatment. On a `.go`, `.py`, `.ts`, or any other code 
 `check` and `score` read only the comments, so a buzzword in a comment is flagged at its
 real line and column while identifiers, strings, and formatting alignment draw nothing.
 `fix` refuses to rewrite code files outright, since prose cleanups break code. Pipe a
-file through stdin to override either behavior on purpose. Data files with no comments,
-like `.json` and `.csv`, are skipped with a note.
+file through stdin to read it as plain text on purpose, or add `--as .go` to read stdin as
+a source file of that type and scan only its comments, which is how an editor checks an
+unsaved buffer. Comments nested inside a function are scanned like any other. Data files
+with no comments, like `.json` and `.csv`, are skipped with a note.
 
 ## Score
 
