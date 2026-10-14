@@ -60,7 +60,9 @@ language-servers = ["slop-chop"]
 
 ## VS Code
 
-A ready-made extension lives in the repo under
+A ready-made extension is on the
+[Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=dcadolph.slop-chop)
+and Open VSX, with its source under
 [`vscode/`](https://github.com/dcadolph/slop-chop/tree/main/vscode). It runs the binary
 directly: diagnostics as you type, a "Chop the slop" command, and a document formatter so
 format-on-save chops the file. Its README covers the install. Rolling your own client

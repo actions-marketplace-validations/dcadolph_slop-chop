@@ -432,7 +432,8 @@ The same engine runs on many surfaces. All local and free unless noted.
 | Where | Get it |
 | --- | --- |
 | Web app | [slop-chop.com](https://slop-chop.com), nothing to install |
-| VS Code, Cursor, VSCodium | search **slop-chop** on [Open VSX](https://open-vsx.org/extension/dcadolph/slop-chop) |
+| VS Code | search **slop-chop** on the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=dcadolph.slop-chop) |
+| Cursor, VSCodium | search **slop-chop** on [Open VSX](https://open-vsx.org/extension/dcadolph/slop-chop) |
 | JetBrains IDEs | the Marketplace plugin, or LSP4IJ with `slop-chop lsp`, see [docs/LSP.md](docs/LSP.md) |
 | Neovim, Helix, any LSP editor | `slop-chop lsp`, see [docs/LSP.md](docs/LSP.md) |
 | Obsidian | search **slop-chop** in Community plugins, source in [obsidian/](obsidian/) |

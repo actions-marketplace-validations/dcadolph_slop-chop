@@ -267,7 +267,7 @@ The same engine, wherever you write. Everything is local and free unless noted.
 
     ---
 
-    Search **slop-chop** on [Open VSX](https://open-vsx.org/extension/dcadolph/slop-chop).
+    Search **slop-chop** on the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=dcadolph.slop-chop) for VS Code, or on [Open VSX](https://open-vsx.org/extension/dcadolph/slop-chop) for Cursor and VSCodium.
 
 -   :material-application-brackets:{ .lg .middle } __JetBrains and LSP editors__
 
