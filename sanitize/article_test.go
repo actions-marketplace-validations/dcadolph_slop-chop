@@ -167,6 +167,118 @@ func TestStartsWithVowelSoundSpelledLowercase(t *testing.T) {
 	}
 }
 
+// TestStartsWithVowelSoundUWords pins the words that open on a u. The sound decides the
+// article and the letter does not: uninstall and unusual open on a short u and take "an",
+// while unary, usage, and unanimous open on "you" and take "a". A bare uni prefix once
+// caught the first group along with the second, so "an uninstall script" was corrected to
+// "a uninstall script", which put an error into correct text.
+func TestStartsWithVowelSoundUWords(t *testing.T) {
+	t.Parallel()
+
+	for _, word := range []string{
+		"uninstall", "unintended", "unimportant", "uninterrupted", "unidentified",
+		"unanswered", "unusual", "umbrella", "usher", "onerous",
+	} {
+		t.Run("an "+word, func(t *testing.T) {
+			t.Parallel()
+			if !startsWithVowelSound(word) {
+				t.Errorf("startsWithVowelSound(%q) = false, want true", word)
+			}
+		})
+	}
+
+	for _, word := range []string{
+		"unary", "usage", "usable", "unanimous", "unicode", "uniform", "union", "unit",
+		"unidirectional", "unimodal", "utopia", "utensil", "uterus", "one", "once",
+	} {
+		t.Run("a "+word, func(t *testing.T) {
+			t.Parallel()
+			if startsWithVowelSound(word) {
+				t.Errorf("startsWithVowelSound(%q) = true, want false", word)
+			}
+		})
+	}
+}
+
+// TestStartsWithVowelSoundLoneLetters pins a letter said by its name, alone or opening a
+// hyphenated or numbered word. The spelling rule read x and n as consonants and u as a vowel,
+// so it corrected "an x coordinate" to "a x coordinate" and "a u-turn" to "an u-turn".
+func TestStartsWithVowelSoundLoneLetters(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		Word string
+		Want bool
+	}{{ // Test 0: x is said "ex".
+		Word: "x", Want: true,
+	}, { // Test 1: a capital letter is said the same way.
+		Word: "X", Want: true,
+	}, { // Test 2: n opens a hyphenated word and is said "en".
+		Word: "n-dimensional", Want: true,
+	}, { // Test 3: x opens a hyphenated word.
+		Word: "x-axis", Want: true,
+	}, { // Test 4: and a numbered one.
+		Word: "x86", Want: true,
+	}, { // Test 5: f is said "eff".
+		Word: "f-string", Want: true,
+	}, { // Test 6: u is said "you", a consonant sound.
+		Word: "u", Want: false,
+	}, { // Test 7: and keeps it when it opens a word.
+		Word: "u-turn", Want: false,
+	}, { // Test 8: a capital U does too.
+		Word: "U", Want: false,
+	}, { // Test 9: b is said "bee".
+		Word: "b", Want: false,
+	}, { // Test 10: a possessive does not defeat the lookup.
+		Word: "x's", Want: true,
+	}}
+
+	for testNum, test := range tests {
+		t.Run(fmt.Sprintf("test %d %s", testNum, test.Word), func(t *testing.T) {
+			t.Parallel()
+			if got := startsWithVowelSound(test.Word); got != test.Want {
+				t.Errorf("startsWithVowelSound(%q) = %v, want %v", test.Word, got, test.Want)
+			}
+		})
+	}
+}
+
+// TestFixLeavesCorrectArticlesAlone runs the whole rewrite on correct English, because the
+// failure that mattered was fix mode writing an error: "an uninstall script" came out as "a
+// uninstall script". A wrong article must still be repaired, so both directions are pinned.
+func TestFixLeavesCorrectArticlesAlone(t *testing.T) {
+	t.Parallel()
+
+	s, err := New(DefaultProfile())
+	if err != nil {
+		t.Fatalf("New(DefaultProfile()) = %v", err)
+	}
+
+	for _, in := range []string{
+		"This is an uninstall script.",
+		"Use an x coordinate.",
+		"An n-dimensional array.",
+		"A unary operator.",
+		"Add a usage example.",
+		"That is an onerous task.",
+		"A unimodal curve.",
+		"A unidirectional flow.",
+	} {
+		t.Run(in, func(t *testing.T) {
+			t.Parallel()
+			if got, _ := s.Fix(in); got != in {
+				t.Errorf("Fix(%q) = %q, want it unchanged", in, got)
+			}
+		})
+	}
+
+	got, _ := s.Fix("This is a uninstall script and an usage example.")
+	want := "This is an uninstall script and a usage example."
+	if got != want {
+		t.Errorf("Fix repaired the wrong articles to %q, want %q", got, want)
+	}
+}
+
 // TestArticleNeedsFixSpelledLowercase checks the rule end to end on the sentence that exposed
 // the bug, so a correct "an npm package" is left alone and a wrong one is still caught.
 func TestArticleNeedsFixSpelledLowercase(t *testing.T) {

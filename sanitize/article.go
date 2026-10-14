@@ -20,11 +20,15 @@ var articleRe = regexp.MustCompile(`\b([Aa]n?)\b([ \t]+)([A-Za-z][A-Za-z.'-]*)`)
 var silentH = []string{"honest", "honor", "honour", "hour", "heir"}
 
 // consonantVowel lists vowel-spelled prefixes that open on a consonant sound, the "you" of
-// "user" and the "wun" of "one", so they take "a" despite the leading vowel.
+// "user" and the "wun" of "one", so they take "a" despite the leading vowel. The uni words
+// are listed by what follows the uni, because a bare uni prefix also caught the short-u
+// words uninstall, unintended, unimportant, and uninterrupted, which take "an".
 //
 //nolint:gochecknoglobals // Immutable lookup.
 var consonantVowel = []string{
-	"use", "user", "usu", "uni", "unit", "uniqu", "unif", "unio", "util",
+	"use", "user", "usa", "usu", "util", "utop", "uter", "utens", "uvul", "ufo",
+	"unic", "unif", "unil", "unio", "unip", "uniq", "unis", "unit", "univ", "unix",
+	"unidir", "unidim", "unimod", "unimol", "unibod", "unary", "unanim",
 	"euro", "eu", "ubiq", "ukulele", "one", "once", "ewe",
 }
 
@@ -167,11 +171,19 @@ func letterRun(word string) string {
 // "one"-sound words take "a" despite a leading vowel, and an all-caps initialism opening on a
 // letter whose name starts with a vowel (A, E, F, H, I, L, M, N, O, R, S, X) takes "an".
 // An all-caps word a reader pronounces rather than spells is judged by its sound instead, and
-// a lowercase word a reader spells, like npm, is judged by the name of its first letter.
+// a lowercase word a reader spells, like npm, is judged by the name of its first letter. So is
+// a lone letter, alone or opening a hyphenated or numbered word: "an x coordinate", "an
+// n-dimensional array", "an x86 build", "a u-turn".
 func startsWithVowelSound(word string) bool {
 	lw := strings.ToLower(strings.Trim(word, "'"))
 	if lw == "" {
 		return false
+	}
+	if letters := lowerRun(lw); len(letters) == 1 {
+		return strings.ContainsRune("aefhilmnorsx", rune(letters[0]))
+	}
+	if strings.HasPrefix(lw, "onerous") {
+		return true
 	}
 	if word == strings.ToUpper(word) && word != lw && len(word) > 1 &&
 		!spokenAcronyms[letterRun(word)] {
