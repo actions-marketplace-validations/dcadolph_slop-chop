@@ -167,6 +167,23 @@ jobs:
           files: dense.md
       - name: The default gate must have failed
         run: test "${{ steps.dense.outcome }}" = "failure"
+      - name: Read the scoring version the engine reports
+        id: scoring
+        run: echo "version=$(sed -n 's/^const ScoringVersion = \([0-9][0-9]*\)$/\1/p' sanitize/score.go)" >> "$GITHUB_OUTPUT"
+      - name: A pin on the current scoring version passes
+        uses: ./
+        with:
+          files: tidy.md
+          scoring-version: ${{ steps.scoring.outputs.version }}
+      - name: A pin on a stale scoring version fails
+        id: stalepin
+        continue-on-error: true
+        uses: ./
+        with:
+          files: tidy.md
+          scoring-version: "0"
+      - name: The stale pin must have failed
+        run: test "${{ steps.stalepin.outcome }}" = "failure"
 
   docs-pass-their-own-check:
     needs: build
@@ -178,7 +195,7 @@ jobs:
           name: slop-chop-binary
       - run: chmod +x slop-chop
       - name: The docs must pass slop-chop
-        run: ./slop-chop check README.md ENGINE.md docs/PROFILE.md docs/VOICE.md docs/BENCHMARK.md docs/ITSELF.md docs/PLUGIN.md docs/SLACK.md docs/MCP.md docs/TELLS.md docs/API.md docs/PRIVACY.md docs/quickstart.md docs/WEB.md
+        run: ./slop-chop check README.md ENGINE.md docs/PROFILE.md docs/VOICE.md docs/BENCHMARK.md docs/SCORING.md docs/ITSELF.md docs/PLUGIN.md docs/SLACK.md docs/MCP.md docs/TELLS.md docs/API.md docs/PRIVACY.md docs/quickstart.md docs/WEB.md
 
   check-fails-on-slop:
     needs: build

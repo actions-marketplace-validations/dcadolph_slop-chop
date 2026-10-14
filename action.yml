@@ -38,6 +38,13 @@ inputs:
       punctuation tidy-ups. By default only the score gate fails the run.
     required: false
     default: "false"
+  scoring-version:
+    description: Fail the run when the engine's scoring version is not this number. Set it
+      to the version your score gate was tuned against, so a tag bump that changes scoring
+      stops the job instead of moving the gate. Leave empty to skip the check. See
+      docs/SCORING.md.
+    required: false
+    default: ""
   commit:
     description: In fix mode, commit and push the rewritten files. The workflow needs
       contents write permission for the push to land.
@@ -72,8 +79,17 @@ runs:
         MODE: ${{ inputs.mode }}
         MAX: ${{ inputs.max }}
         STRICT: ${{ inputs.strict }}
+        SCORING_VERSION: ${{ inputs.scoring-version }}
       run: |
         read -ra files <<< "$FILES"
+        have="$(printf '' | "${RUNNER_TEMP}/slop-chop" score --json |
+          sed -n 's/.*"scoringVersion":\([0-9][0-9]*\).*/\1/p')"
+        echo "slop-chop scoring version ${have}"
+        if [ -n "$SCORING_VERSION" ] && [ "$SCORING_VERSION" != "$have" ]; then
+          echo "slop-chop: the engine scores at version ${have} but scoring-version pins ${SCORING_VERSION}." >&2
+          echo "Read docs/SCORING.md, retune the gate, then update the pin." >&2
+          exit 1
+        fi
         args=()
         if [ -n "$PROFILE" ]; then args+=(--profile "$PROFILE"); fi
         if [ -n "$DIALECT" ]; then args+=(--dialect "$DIALECT"); fi

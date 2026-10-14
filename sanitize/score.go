@@ -7,6 +7,13 @@ import (
 	"unicode"
 )
 
+// ScoringVersion is the revision of the scoring rules. It rises whenever a change can move
+// the score of unchanged text under an unchanged profile: a signal, a weight, a threshold,
+// or a rule that carries weight. A CI gate set on a score holds only while this number
+// stays the same. docs/SCORING.md lists what moved at each revision, and the contract test
+// in this package fails when scores move without a bump.
+const ScoringVersion = 1
+
 // Score is a lint result: how densely a text carries the patterns the active profile
 // lists, from 0 for none to 100 for saturated. It is not a reading on who wrote the text
 // and cannot be turned into one, since the same patterns appear in writing people produce
@@ -22,6 +29,9 @@ import (
 type Score struct {
 	// Value is the 0 to 100 lint score, the capped sum of the signals below.
 	Value int `json:"value"`
+	// ScoringVersion is the revision of the scoring rules that produced Value. Two scores
+	// compare only when it matches, since a revision exists to say that numbers moved.
+	ScoringVersion int `json:"scoringVersion"`
 	// Tells is the number of rule findings in the text.
 	Tells int `json:"tells"`
 	// Words is the word count the densities are measured against.
@@ -227,20 +237,21 @@ func (s *Sanitizer) Score(text string) Score {
 
 	value := int(math.Round(math.Min(100, density+hedging+weighing+drumbeat+tails+clauses+cadence+evidence)))
 	return Score{
-		Value:       value,
-		Tells:       tells,
-		Words:       words,
-		Sentences:   sentences,
-		TellsPer100: math.Round(per100(tells, words)*100) / 100,
-		CadenceCV:   cadenceReport(cadenceCV(prose)),
-		Punchiness:  cadenceReport(punchiness(prose)),
-		Density:     int(math.Round(density)),
-		Hedging:     int(math.Round(hedging)),
-		Drumbeat:    int(math.Round(drumbeat)),
-		Tails:       int(math.Round(tails)),
-		Clauses:     int(math.Round(clauses)),
-		Cadence:     int(math.Round(cadence)),
-		Evidence:    int(math.Round(evidence)),
+		Value:          value,
+		ScoringVersion: ScoringVersion,
+		Tells:          tells,
+		Words:          words,
+		Sentences:      sentences,
+		TellsPer100:    math.Round(per100(tells, words)*100) / 100,
+		CadenceCV:      cadenceReport(cadenceCV(prose)),
+		Punchiness:     cadenceReport(punchiness(prose)),
+		Density:        int(math.Round(density)),
+		Hedging:        int(math.Round(hedging)),
+		Drumbeat:       int(math.Round(drumbeat)),
+		Tails:          int(math.Round(tails)),
+		Clauses:        int(math.Round(clauses)),
+		Cadence:        int(math.Round(cadence)),
+		Evidence:       int(math.Round(evidence)),
 	}
 }
 
