@@ -12,17 +12,16 @@ command line, and your text never leaves the machine.
 
 ## Install
 
-It needs the binary first: `brew install dcadolph/tap/slop-chop`.
+It needs the binary first: `brew install dcadolph/tap/slop-chop`, or
+`go install github.com/dcadolph/slop-chop@latest`.
 
-The extension is plain JavaScript with no dependencies. Until it is on the marketplace, link
-it straight into your extensions folder:
+Then install the extension. Search **slop-chop** in the Extensions view and pick the one from
+dcadolph, or run `code --install-extension dcadolph.slop-chop`. Cursor and VSCodium find it on
+Open VSX.
 
-```
-ln -s /path/to/slop-chop/vscode ~/.vscode/extensions/dcadolph.slop-chop-0.1.0
-```
-
-Then reload VS Code. Or package a vsix with `npx @vscode/vsce package` from this folder and
-install it via "Extensions: Install from VSIX".
+The extension is plain JavaScript with no dependencies, so building from source is short.
+Package a vsix with `npx @vscode/vsce package` from this folder and install it via
+"Extensions: Install from VSIX".
 
 ## Settings
 
