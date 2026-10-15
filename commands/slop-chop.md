@@ -11,8 +11,8 @@ is either a file path or the text to clean: `$ARGUMENTS`.
 Steps:
 
 1. Confirm the CLI is available with `slop-chop --version`. If it is missing,
-   tell the user to install it with `go install github.com/dcadolph/slop-chop@latest`
-   and stop.
+   tell the user to install it with `brew install dcadolph/tap/slop-chop` or
+   `go install github.com/dcadolph/slop-chop@latest` and stop.
 2. If the argument is a path to an existing file, run `slop-chop fix <path>` and
    show the cleaned output. Do not pass `-w` unless the user asked to change the
    file in place.
@@ -25,6 +25,11 @@ Notes:
 - The plain rules pass is deterministic and free. Do not add `--rewrite` unless
   the user asks for the model pass, since it needs `ANTHROPIC_API_KEY` and makes
   a paid API call.
+- `fix` prints one summary line on stderr, such as
+  `rewrote 2 finding(s); 5 left for you (4 word, 1 structural); score 95 -> 92`.
+  When it says tells are left for the user, name them and offer to reword those
+  sentences by hand, since no rule can rewrite them and the score stays high
+  until they change.
 - Use `slop-chop check` instead of `fix` when the user only wants to see the
   tells without changing anything. It exits non-zero when it finds any.
 - Pass `--dialect american|british` or `--preset plain` through when the user
