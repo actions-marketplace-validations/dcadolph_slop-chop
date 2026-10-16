@@ -27,11 +27,12 @@ since it is deterministic and repeatable.
 Run `slop-chop --version`. If it is missing, install it:
 
 ```sh
+brew install dcadolph/tap/slop-chop
 go install github.com/dcadolph/slop-chop@latest
 ```
 
-The binary lands in `$(go env GOPATH)/bin`. If that is not on `PATH`, either add
-it or call the binary by full path.
+Either one works. With `go install` the binary lands in `$(go env GOPATH)/bin`. If
+that is not on `PATH`, either add it or call the binary by full path.
 
 ## Core commands
 
@@ -74,7 +75,8 @@ place.
 
 - Cleaning a draft you are about to return: pipe it through `slop-chop fix`, or
   write the draft to a file and run `slop-chop fix -w`, then read the result
-  back before handing it over.
+  back before handing it over. If `fix` reports tells left for you, say so and
+  offer to reword those sentences, since no rule can.
 - Gating a document in CI: `slop-chop check`. A non-zero exit means slop was
   found.
 - Deciding whether text needs cleaning at all: `slop-chop check --json` and read
@@ -114,8 +116,10 @@ slop-chop fix --preset plain notes.md            # corporate phrasing to plain E
 slop-chop fix --profile myprofile.json notes.md  # your own cut list
 ```
 
-Dialects: `american`, `british`. Presets shipped: `plain`, `corporate`, `academic`,
-`marketing`. Overlay several with a comma. A profile is a JSON file listing characters,
+Dialects: `american`, `british`. Presets shipped: `cleaver`, `plain`, `corporate`,
+`academic`, `marketing`, `no-dashes`, `typography`. `cleaver` is the strongest cut:
+the default profile only flags buzzwords like `leverage`, and `cleaver` rewrites
+them. Overlay several with a comma. A profile is a JSON file listing characters,
 phrases, words, regexes, structural `flagPatterns`, an allow list, and switches.
 When `--profile` is not set and a `.slop-chop.json` file sits in the working
 directory, that profile is used instead of the built-in one, so a repo can pin
@@ -125,13 +129,17 @@ its own style.
 
 ```sh
 slop-chop check --json notes.md          # {"findings": [...]}
-slop-chop fix --json notes.md            # {"cleaned": "...", "findings": [...]}
+slop-chop fix --json notes.md            # cleaned, findings, remaining, score, scoreAfter
 slop-chop check --json --pretty notes.md # indented
 ```
 
 Each finding carries the rule, the matched text, the suggested replacement, and
-a line and column. `--json` takes at most one file and cannot combine with `-w`.
-Read `cleaned` to get the fixed text without touching the file.
+a line and column. A finding with a replacement was rewritten, and one without was
+only flagged. `remaining` is what `check` reports on the cleaned text, the tells no
+rule can rewrite, so read it before handing the text back. Every score carries a
+`scoringVersion`, and scores compare only within one version. `--json` takes at
+most one file and cannot combine with `-w`. Read `cleaned` to get the fixed text
+without touching the file.
 
 ## Environment variables
 
