@@ -70,7 +70,7 @@ func anaphoraFindings(text string, protected [][2]int) []Finding {
 		}
 		if spans[i].key != "" && j-i >= 3 && !identicalRun(text, spans[i:j]) {
 			start, end := spans[i].start, spans[j-1].end
-			if !overlapsAny(protected, start, end) {
+			if !overlapsAny(protected, start, end) && !holdsDirective(text[start:end]) {
 				out = append(out, Finding{
 					Rule:   "structural:anaphora-run",
 					Match:  text[start:end],
@@ -156,4 +156,24 @@ func anaphoraKey(sentence string) string {
 		return ""
 	}
 	return strings.ToLower(first + " " + second)
+}
+
+// holdsDirective reports whether run holds a C preprocessor line. A stack of #include
+// lines pasted into a comment is code, and its sentence splits at every dot in a header
+// name, so it never reads as a drumbeat.
+func holdsDirective(run string) bool {
+	for _, line := range strings.Split(run, "\n") {
+		word, _, _ := strings.Cut(strings.TrimSpace(line), " ")
+		if preprocessorDirectives[word] {
+			return true
+		}
+	}
+	return false
+}
+
+// preprocessorDirectives are the C preprocessor words that follow a hash with no space.
+var preprocessorDirectives = map[string]bool{
+	"#define": true, "#elif": true, "#else": true, "#endif": true, "#error": true,
+	"#if": true, "#ifdef": true, "#ifndef": true, "#include": true, "#pragma": true,
+	"#undef": true,
 }
