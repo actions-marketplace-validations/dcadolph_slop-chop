@@ -59,6 +59,7 @@ version 2 are two different statements about the text.
 
 | Version | Release | What moved                                                                                                                                        |
 |---------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------|
+| 2       | v0.49.0 | Three standard library false positives: a sentence restated word for word, #include lines in a comment, and Greek math symbols.                   |
 | 1       | v0.48.0 | The first stamped version. It scores exactly as v0.47.0 did, which the benchmark corpus confirms: none of its 153 passages moves between the two. |
 
 ### Before the stamp

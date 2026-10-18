@@ -12,7 +12,7 @@ import (
 // or a rule that carries weight. A CI gate set on a score holds only while this number
 // stays the same. docs/SCORING.md lists what moved at each revision, and the contract test
 // in this package fails when scores move without a bump.
-const ScoringVersion = 1
+const ScoringVersion = 2
 
 // Score is a lint result: how densely a text carries the patterns the active profile
 // lists, from 0 for none to 100 for saturated. It is not a reading on who wrote the text

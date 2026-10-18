@@ -344,9 +344,11 @@ func DefaultProfile() Profile {
 			// for fun but because" contrasts out of reach.
 			"not-just-a-but": `(?i)\bnot (?:just|merely|simply) (?:a|an|the)\b[^.!?\n]{1,40}\bbut (?:a|an|the)\b`,
 			// A Latin letter pressed against a Cyrillic or Greek one inside a word, the
-			// homoglyph smuggling that hides a tell from every word list. Flag only: the
-			// safe respelling is the author's call.
-			"mixed-script": `(?:\p{Latin}[\p{Cyrillic}\p{Greek}]|[\p{Cyrillic}\p{Greek}]\p{Latin})`,
+			// homoglyph smuggling that hides a tell from every word list. Greek counts
+			// only for the letters that pass for Latin ones, so math symbols like theta
+			// and pi beside a Latin subscript stay quiet. Flag only: the safe respelling
+			// is the author's call.
+			"mixed-script": `(?:\p{Latin}[\p{Cyrillic}ΑΒΕΖΗΙΚΜΝΟΡΤΥΧανορι]|[\p{Cyrillic}ΑΒΕΖΗΙΚΜΝΟΡΤΥΧανορι]\p{Latin})`,
 			// The pasted-assistant-answer artifacts: a document that talks about its own
 			// delivery the way a chat reply does.
 			"below-is-requested": `(?im)^(?:\w+[.!] )?below (?:is|are) (?:the|a|an|your) (?:requested|updated|revised|complete|full|final)\b`,
