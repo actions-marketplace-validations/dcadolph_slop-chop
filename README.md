@@ -181,7 +181,7 @@ lint result, not an authorship verdict.
 
 ```sh
 slop-chop score notes.md            # notes.md: 42 (mixed: 5 tells in 180 words)
-slop-chop score --json notes.md     # {"value":42,"scoringVersion":1,"tells":7,...}
+slop-chop score --json notes.md     # {"value":42,"scoringVersion":2,"tells":7,...}
 slop-chop score --max 20 notes.md   # exit non-zero when the score is above 20
 ```
 
@@ -225,7 +225,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dcadolph/slop-chop@v0.48.0
+      - uses: dcadolph/slop-chop@v0.49.0
         with:
           files: docs/intro.md docs/guide.md
           # max: 25                   # optional, the score line
@@ -282,7 +282,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.head_ref }}
-      - uses: dcadolph/slop-chop@v0.48.0
+      - uses: dcadolph/slop-chop@v0.49.0
         with:
           files: docs/intro.md docs/guide.md
           mode: fix
