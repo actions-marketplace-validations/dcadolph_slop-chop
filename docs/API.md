@@ -30,8 +30,8 @@ curl -s https://api.slop-chop.com/chop \
   "output": "We use many solid tools.",
   "findings": [ { "rule": "phrase:in summary,", "match": "In summary, w", "offset": 0 } ],
   "remaining": [],
-  "score":      { "value": 80, "scoringVersion": 1 },
-  "scoreAfter": { "value": 0, "scoringVersion": 1 }
+  "score":      { "value": 80, "scoringVersion": 2 },
+  "scoreAfter": { "value": 0, "scoringVersion": 2 }
 }
 ```
 
