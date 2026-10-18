@@ -210,7 +210,7 @@ only: the fix depends on the whole sentence, so it is left to you or the rewrite
 | `lets-take-a-look` | `(?i)\blet'?s (?:take a (?:closer )?look\|explore\|unpack\|break (?:it\|this) down)\b` |
 | `manufactured-turn` | `(?i)\b(?:here'?s where it gets (?:interesting\|good\|tricky\|fun)\|but here'?s the (?:twist\|thing))\b` |
 | `marketing-reveal` | `(?i)\b(?:say (?:goodbye\|hello) to\|gone are the days\|no more (?:wrestling\|fighting\|struggling) with\|imagine a world where\|picture this:)` |
-| `mixed-script` | `(?:\p{Latin}[\p{Cyrillic}\p{Greek}]\|[\p{Cyrillic}\p{Greek}]\p{Latin})` |
+| `mixed-script` | `(?:\p{Latin}[\p{Cyrillic}ΑΒΕΖΗΙΚΜΝΟΡΤΥΧανορι]\|[\p{Cyrillic}ΑΒΕΖΗΙΚΜΝΟΡΤΥΧανορι]\p{Latin})` |
 | `never-been-more` | `(?i)\b(?:has\|have) never been more (?:important\|critical\|relevant\|urgent\|clear\|apparent\|necessary)\b` |
 | `no-breaking` | `(?i)\bno breaking changes (?:are\|were) introduced\b` |
 | `no-commitment` | `(?i)\b(?:depends? on (?:several\|many\|a number of) factors\|the right choice will vary\|a defensible choice\|will vary based on your)\b` |
