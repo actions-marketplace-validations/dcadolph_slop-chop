@@ -89,6 +89,9 @@ func TestFlagPatterns(t *testing.T) {
 		{Name: "not just a but", In: "It's not just a library but a whole platform.", WantRule: "structural:not-just-a-but", WantHit: true},
 		{Name: "not just for fun", In: "She plays not just for fun but because it pays.", WantRule: "structural:not-just-a-but", WantHit: false},
 		{Name: "mixed script homoglyph", In: "The summаry looks fine to me.", WantRule: "structural:mixed-script", WantHit: true},
+		{Name: "greek math symbol with latin subscript", In: "The angle θi is measured in radians.", WantRule: "structural:mixed-script", WantHit: false},
+		{Name: "greek micro sign with latin unit", In: "The call took 40 μs on average.", WantRule: "structural:mixed-script", WantHit: false},
+		{Name: "greek lookalike inside a latin word", In: "The sumΜary looks fine to me.", WantRule: "structural:mixed-script", WantHit: true},
 		{Name: "separate scripts", In: "The word means слово in Russian.", WantRule: "structural:mixed-script", WantHit: false},
 		{Name: "spaced double hyphen", In: "The plan -- which shipped -- works fine.", WantRule: "structural:spaced-hyphen", WantHit: true},
 		{Name: "capitalized range", In: "Open Monday - Friday, nine to five.", WantRule: "structural:spaced-hyphen", WantHit: false},
@@ -104,6 +107,7 @@ func TestFlagPatterns(t *testing.T) {
 		{Name: "anaphora epizeuxis", In: "It's not fair. It's not fair. It's not fair.", WantRule: "structural:anaphora-run", WantHit: false},
 		{Name: "anaphora epizeuxis case and punctuation", In: "We tried. We tried! We tried.", WantRule: "structural:anaphora-run", WantHit: false},
 		{Name: "anaphora epizeuxis then varying tail", In: "We tried harder. We tried again. We tried everything.", WantRule: "structural:anaphora-run", WantHit: true},
+		{Name: "anaphora include list", In: "// Needed for the build:\n#include <sys/time.h>\n#include <sys/event.h>\n#include <sys/mman.h>\n#include <sys/ucontext.h>", WantRule: "structural:anaphora-run", WantHit: false},
 		{Name: "anaphora long sentences", In: "The contractor shall provide all materials required for the work described above. The contractor shall maintain insurance coverage for the full duration of the engagement. The contractor shall submit invoices no later than the fifth business day of each month.", WantRule: "structural:anaphora-run", WantHit: false},
 	}
 

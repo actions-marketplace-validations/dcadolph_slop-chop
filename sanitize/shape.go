@@ -118,11 +118,18 @@ func uniformParagraphs(text string, paras []paraSpan) (Finding, bool) {
 	return Finding{}, false
 }
 
+// site is one paragraph's opening sentence, located in the text.
+type site struct {
+	// start and end are the byte range of the sentence.
+	start, end int
+	// para is the index of the paragraph holding the sentence.
+	para int
+}
+
 // templateStems reports a finding for each opening stem, the first few words of a
 // sentence, that recurs across enough distinct paragraphs. "In this section, we" five
 // times is an outline talking, not a writer.
 func templateStems(text string, paras []paraSpan, protected [][2]int) []Finding {
-	type site struct{ start, end, para int }
 	stems := map[string][]site{}
 	for pi, p := range paras {
 		// Only a paragraph's opening sentence counts. The outline tell is paragraphs
@@ -152,6 +159,9 @@ func templateStems(text string, paras []paraSpan, protected [][2]int) []Finding 
 		if len(paraSet) < stemMinRepeats {
 			continue
 		}
+		if verbatimSites(text, sites) {
+			continue
+		}
 		first := sites[0]
 		end := first.start + stemEnd(text[first.start:first.end], stemWords)
 		if end <= first.start || overlapsAny(protected, first.start, end) {
@@ -165,6 +175,20 @@ func templateStems(text string, paras []paraSpan, protected [][2]int) []Finding 
 		})
 	}
 	return out
+}
+
+// verbatimSites reports whether every opening sentence in sites says the same thing word
+// for word. A stamped template varies its tail, while a sentence repeated exactly is a
+// notice or a caveat the author meant to restate, like the same platform limitation above
+// each function it applies to.
+func verbatimSites(text string, sites []site) bool {
+	first := sentenceWords(text[sites[0].start:sites[0].end])
+	for _, s := range sites[1:] {
+		if sentenceWords(text[s.start:s.end]) != first {
+			return false
+		}
+	}
+	return true
 }
 
 // stemEnd returns the byte offset just past the nth whitespace-separated word of s, or 0
