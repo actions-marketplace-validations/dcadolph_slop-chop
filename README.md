@@ -296,6 +296,39 @@ token, so the push fails with a 403 no matter the `permissions` block. For fork 
 use the check workflow above: it needs no write access and still fails the run on slop. To
 auto-fix your own branches, run the same fix-and-commit job on a `push` trigger instead.
 
+To see findings as code scanning alerts, on the pull request diff and in the Security tab,
+set `sarif` to a path and upload the log it writes:
+
+```yaml
+name: slop-chop
+on: pull_request
+jobs:
+  slop:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dcadolph/slop-chop@v0.49.0
+        with:
+          files: docs/intro.md docs/guide.md
+          sarif: slop-chop.sarif
+      - uses: github/codeql-action/upload-sarif@v4
+        if: ${{ !cancelled() }}
+        with:
+          sarif_file: slop-chop.sarif
+          category: slop-chop
+```
+
+The upload runs even when the score gate fails the job, so the alerts land on the pull request
+that caused them. Findings that count toward the score are warnings and the rest are
+notes. None are errors, so by default the alerts never fail the pull request check and the
+score stays the gate. Code scanning uploads are free on public repositories, and private ones
+need GitHub Code Security. A pull request from a fork gets a read-only token, so the upload
+fails there. On the command line, `slop-chop check --sarif` writes the same log to stdout for
+any number of files.
+
 ## Use it as a Claude Code plugin
 
 ![An agent drafts sloppy text, slop-chop scores it 80 with 18 findings, the agent rewrites, and the revision scores 0](docs/assets/agent-loop.gif)
