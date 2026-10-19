@@ -30,6 +30,7 @@ var flags = map[string]*pflag.Flag{
 	KeyWhy:           &FlagWhy,
 	KeyAs:            &FlagAs,
 	KeySARIF:         &FlagSARIF,
+	KeyStrict:        &FlagStrict,
 }
 
 // Changed reports whether the flag for key was set on the command line.
