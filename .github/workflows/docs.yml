@@ -3,6 +3,10 @@ name: docs
 on:
   push:
     branches: [main]
+    # The bump commit reaches main before its tag exists, so that build is stamped with the
+    # previous tag. The tag push rebuilds the site from the tag itself. Path filters do not
+    # apply to tag pushes.
+    tags: ['v*']
     paths:
       - docs/**
       - overrides/**
