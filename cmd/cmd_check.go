@@ -50,28 +50,30 @@ func runCheck(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if len(args) == 0 {
-		text, err := readInput("", cmd.InOrStdin())
+		raw, err := readInput("", cmd.InOrStdin())
 		if err != nil {
 			return err
 		}
+		text := raw
 		as := config.As()
 		if as != "" {
-			if text, err = maskStdin(text, as); err != nil {
+			if text, err = maskStdin(raw, as); err != nil {
 				return err
 			}
 		}
-		return checkOne(s, text, "", as != "", cmd.OutOrStdout(), cmd.ErrOrStderr())
+		return checkOne(s, text, raw, "", as != "", cmd.OutOrStdout(), cmd.ErrOrStderr())
 	}
 	found := false
 	for _, path := range args {
-		text, ok, err := readProse(path, cmd.InOrStdin(), cmd.ErrOrStderr())
+		raw, err := readInput(path, cmd.InOrStdin())
 		if err != nil {
 			return err
 		}
+		text, ok := maskProse(path, raw, cmd.ErrOrStderr())
 		if !ok {
 			continue
 		}
-		switch err := checkOne(s, text, path, source.Is(path), cmd.OutOrStdout(), cmd.ErrOrStderr()); {
+		switch err := checkOne(s, text, raw, path, source.Is(path), cmd.OutOrStdout(), cmd.ErrOrStderr()); {
 		case errors.Is(err, errFindings):
 			found = true
 		case err != nil:
@@ -88,11 +90,15 @@ func runCheck(cmd *cobra.Command, args []string) error {
 // Findings on a file are prefixed with its path, so a terminal can jump to the spot. When
 // asSource is true the text is a source file's comment mask, whether it came from a path
 // or from stdin with --as, so cleanup findings are dropped: a spacing nit inside a comment
-// is not a tell, and fix will never rewrite it.
-func checkOne(s *sanitize.Sanitizer, text, path string, asSource bool, stdout, stderr io.Writer) error {
+// is not a tell, and fix will never rewrite it. The rest are placed against raw, the
+// original, because the mask counts a multibyte rune of code as several columns.
+func checkOne(s *sanitize.Sanitizer, text, raw, path string, asSource bool, stdout, stderr io.Writer) error {
 	findings := s.Check(text)
 	if asSource {
 		findings = dropTidyFindings(findings)
+		if err := sanitize.Locate(raw, findings); err != nil {
+			return err
+		}
 	}
 	if config.JSON() {
 		if err := writeJSON(stdout, checkReport{Findings: jsonutil.OrEmpty(findings)}, config.Pretty()); err != nil {

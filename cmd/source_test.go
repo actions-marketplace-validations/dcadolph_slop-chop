@@ -3,6 +3,7 @@ package cmd
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -77,6 +78,42 @@ func TestCheckAsIndentedCommentKeepsSentenceStart(t *testing.T) {
 	}
 	if !strings.Contains(stdout, `"match":"It is important to note that w","replacement":"W"`) {
 		t.Errorf("stdout = %s, want the opener replaced by a capital W", stdout)
+	}
+}
+
+// TestCheckSourceColumns checks that a finding in a comment is placed by rune column in the
+// original file, whether the file comes by path or through stdin with --as. The mask blanks
+// each byte of code to a space, so a multibyte rune of code before the comment once pushed
+// the reported column right by its extra bytes.
+func TestCheckSourceColumns(t *testing.T) {
+	src := "package x\n\nvar s = \"ééé\" // We delve here.\n"
+	tests := []struct {
+		WantText string
+		WantJSON string
+		Args     []string
+		In       string
+	}{{ // Test 0: A source file read by path.
+		Args: []string{"check"}, WantText: ":3:21 word:delve",
+	}, { // Test 1: The same source read from stdin with --as.
+		Args: []string{"check", "--json", "--as", ".go"}, In: src, WantJSON: `"line":3,"col":21`,
+	}}
+	for testNum, test := range tests {
+		t.Run(fmt.Sprintf("test %d", testNum), func(t *testing.T) {
+			args := test.Args
+			if test.In == "" {
+				args = append(args, writeTemp(t, t.TempDir(), "x.go", src))
+			}
+			stdout, stderr, err := runCLI(t, args, test.In)
+			if !errors.Is(err, errFindings) {
+				t.Fatalf("err = %v, want errFindings", err)
+			}
+			if test.WantText != "" && !strings.Contains(stderr, test.WantText) {
+				t.Errorf("stderr = %q, want %q", stderr, test.WantText)
+			}
+			if test.WantJSON != "" && !strings.Contains(stdout, test.WantJSON) {
+				t.Errorf("stdout = %s, want %s", stdout, test.WantJSON)
+			}
+		})
 	}
 }
 
