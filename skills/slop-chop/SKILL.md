@@ -36,7 +36,8 @@ that is not on `PATH`, either add it or call the binary by full path.
 
 ## Core commands
 
-`check` reports tells and exits non-zero when it finds any. It changes nothing.
+`check` reports tells and exits non-zero when one carries score weight. Cleanups with no
+weight are listed without failing, and `--strict` fails on any finding. It changes nothing.
 
 ```sh
 slop-chop check notes.md

@@ -133,7 +133,7 @@ Both run the same rules. They differ in what they do with the matches.
 | ---------------- | ----------------------------- | ----------------------------- |
 | Changes the text | No                            | Yes                           |
 | Writes to        | findings on stderr            | clean text on stdout          |
-| Exit code        | non-zero when it finds slop   | zero                          |
+| Exit code        | non-zero on weighted findings | zero                          |
 | Good for         | a CI gate                     | cleaning a file               |
 | Positions        | exact, against the original   | same findings with `--json`, positions from the original |
 
@@ -149,7 +149,9 @@ Input:
 In summary, a comprehensive—and robust—plan; it works.
 ```
 
-`slop-chop check` reports every match in text order and exits non-zero:
+`slop-chop check` reports every match in text order and exits non-zero when a finding
+carries score weight. Cleanups with no weight are listed without failing, and `--strict`
+fails on any finding:
 
 ```text
 1:1 phrase:in summary,: "In summary, a" -> "A"

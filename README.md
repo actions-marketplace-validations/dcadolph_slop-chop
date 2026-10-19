@@ -106,7 +106,7 @@ slop-chop fix -w notes.md
 # Pipe text through it
 echo "In summary, a robust—and seamless—result." | slop-chop fix
 
-# Flag slop without changing anything (exits non-zero if it finds any)
+# Flag slop without changing anything (exits non-zero if a finding carries score weight)
 slop-chop check notes.md
 
 # Check or fix several files at once
@@ -142,9 +142,10 @@ for you, and how the score moved.
 
 ## Modes
 
-- `check` flags what it finds and exits non-zero. Drop it in CI. Add `--why` and every
-  finding carries a plain-words line saying what fired and what happens to it, the same
-  explanations the web app shows on a tap.
+- `check` flags what it finds and exits non-zero when a finding carries score weight.
+  Cleanups with no weight are listed without failing. Pass `--strict` to fail on any
+  finding. Drop it in CI. Add `--why` and every finding carries a plain-words line saying
+  what fired and what happens to it, the same explanations the web app shows on a tap.
 - `fix` writes the cleaned text to stdout and leaves your file alone. Pass `-w` to change
   the file in place instead.
 - `score` measures how densely the text carries the patterns your profile lists, 0 to 100.
@@ -237,9 +238,9 @@ jobs:
 ```
 
 Set `max` to move the line, or `max: 100` to turn the score gate off. Set `strict: "true"` to
-fail on any single finding, the way `slop-chop check` does on the command line. The default
-line sits where ordinary human writing almost never lands: 0.8 percent of the 886 READMEs in
-the [benchmark](docs/BENCHMARK.md) score 25 or more.
+fail on any single finding, the way `slop-chop check --strict` does on the command line. The
+default line sits where ordinary human writing almost never lands: 0.8 percent of the 886
+READMEs in the [benchmark](docs/BENCHMARK.md) score 25 or more.
 
 The action builds the engine from the tag you name, so the tag pins the engine and its
 scoring version together. A newer tag can score the same file differently when its scoring
