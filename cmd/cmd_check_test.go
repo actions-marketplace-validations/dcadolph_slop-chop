@@ -118,3 +118,39 @@ func TestCheckWhy(t *testing.T) {
 		t.Errorf("explanations printed without --why:\n%s", plain)
 	}
 }
+
+// TestOutputStartsNoWorkflowCommand checks that no line check or score prints starts with
+// "::", even when lines of the input do. The action pipes pull request text through both,
+// and the GitHub runner reads an output line that starts with "::" as a workflow command.
+func TestOutputStartsNoWorkflowCommand(t *testing.T) {
+	// The span rule matches across lines, so a finding carries a line that starts with "::".
+	profile := writeTemp(t, t.TempDir(), "profile.json",
+		`{"flagPatterns": {"span": "(?s)open.*?close"}}`)
+	in := "We delve into it.\n::error::injected\nopen\n::warning close\n::add-mask::secret\n"
+	tests := []struct {
+		Args         []string
+		WantContains string
+	}{{ // Test 0: Check prints the finding that spans the "::" line.
+		Args: []string{"check", "--profile", profile}, WantContains: "structural:span",
+	}, { // Test 1: Score with the gate on prints its verdict.
+		Args: []string{"score", "--max", "0", "--profile", profile}, WantContains: "tells in",
+	}}
+
+	for testNum, test := range tests {
+		t.Run(fmt.Sprintf("test %d", testNum), func(t *testing.T) {
+			stdout, stderr, err := runCLI(t, test.Args, in)
+			if !errors.Is(err, errFindings) {
+				t.Fatalf("err = %v, want errFindings", err)
+			}
+			out := stdout + stderr
+			if !strings.Contains(out, test.WantContains) {
+				t.Fatalf("output = %q, want it to contain %q", out, test.WantContains)
+			}
+			for line := range strings.Lines(out) {
+				if strings.HasPrefix(strings.TrimSpace(line), "::") {
+					t.Errorf("output line %q starts a workflow command", line)
+				}
+			}
+		})
+	}
+}
