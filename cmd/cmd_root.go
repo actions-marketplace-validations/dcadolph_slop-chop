@@ -217,3 +217,12 @@ func writeJSON(w io.Writer, v any, pretty bool) error {
 	_, err = fmt.Fprintln(w, string(b))
 	return err
 }
+
+// clipRunes trims s to at most n runes, marking a cut with an ellipsis.
+func clipRunes(s string, n int) string {
+	r := []rune(s)
+	if len(r) <= n {
+		return s
+	}
+	return string(r[:n]) + "…"
+}

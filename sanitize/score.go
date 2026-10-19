@@ -295,6 +295,13 @@ func (s *Sanitizer) weightTells(findings []Finding) float64 {
 	return total
 }
 
+// Weight returns the score weight one finding of the named rule carries under this
+// profile, before Score discounts repeats and overlapping structural spans. A rule with no
+// weight is house style or typography rather than evidence of machine writing.
+func (s *Sanitizer) Weight(rule string) float64 {
+	return s.tellWeight(rule)
+}
+
 // tellWeight resolves the score weight for one finding by its rule name. An exact entry
 // in the profile's scoreWeights wins, then the rule's class, then the built-in default:
 // structural tells count double, since a stock sentence shape is stronger evidence than

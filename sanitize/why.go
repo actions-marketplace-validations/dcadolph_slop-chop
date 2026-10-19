@@ -18,18 +18,24 @@ var whyReasons = map[string]string{
 	"spelling":   "The dialect setting enforces this spelling.",
 }
 
+// Reason says in plain words why a rule of this name fires. It is the sentence Why opens
+// with, carried by the rule's class rather than by any one finding.
+func Reason(rule string) string {
+	cls := rule
+	if c, _, ok := strings.Cut(rule, ":"); ok {
+		cls = c
+	}
+	if reason, ok := whyReasons[cls]; ok {
+		return reason
+	}
+	return "House-style cleanup. It carries no score weight."
+}
+
 // Why says in plain words why the finding fired and what happens to it, so a reader never
 // has to decode a rule name. The class carries the reason and the replacement carries the
 // action.
 func Why(f Finding) string {
-	cls := f.Rule
-	if c, _, ok := strings.Cut(f.Rule, ":"); ok {
-		cls = c
-	}
-	reason, ok := whyReasons[cls]
-	if !ok {
-		reason = "House-style cleanup. It carries no score weight."
-	}
+	reason := Reason(f.Rule)
 	switch {
 	case f.Replacement == nil:
 		return reason + " It only flags; the rewording is your call."
