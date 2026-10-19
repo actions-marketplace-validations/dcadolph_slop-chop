@@ -39,7 +39,9 @@ echo "In summary, a robust—and seamless—result." | slop-chop fix
 
 ## Flag without changing
 
-`check` flags what it finds and exits non-zero, so it drops straight into CI:
+`check` flags what it finds and exits non-zero when a finding carries score weight, so it
+drops straight into CI. Cleanups with no weight are listed without failing, and `--strict`
+fails on any finding:
 
 ```sh
 slop-chop check notes.md

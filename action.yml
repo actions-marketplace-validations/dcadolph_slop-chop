@@ -36,8 +36,9 @@ inputs:
     required: false
     default: "25"
   strict:
-    description: In check mode, also fail on any single finding, including whitespace and
-      punctuation tidy-ups. By default only the score gate fails the run.
+    description: In check mode, also fail on any single finding, including cleanups that
+      carry no score weight, such as whitespace and punctuation tidy-ups. By default only
+      the score gate fails the run.
     required: false
     default: "false"
   sarif:
@@ -128,7 +129,7 @@ runs:
             for f in "${files[@]}"; do
               echo "::group::slop-chop check $f"
               if [ "$STRICT" = "true" ]; then
-                "${RUNNER_TEMP}/slop-chop" check "${args[@]}" "$f" || rc=1
+                "${RUNNER_TEMP}/slop-chop" check --strict "${args[@]}" "$f" || rc=1
               else
                 "${RUNNER_TEMP}/slop-chop" check "${args[@]}" "$f" || true
               fi
@@ -148,7 +149,7 @@ runs:
                 text="$(printf '%s\n\n%s\n' "$PR_TITLE" "$PR_BODY")"
                 echo "::group::slop-chop check pull request title and body"
                 if [ "$STRICT" = "true" ]; then
-                  printf '%s\n' "$text" | "${RUNNER_TEMP}/slop-chop" check "${args[@]}" || rc=1
+                  printf '%s\n' "$text" | "${RUNNER_TEMP}/slop-chop" check --strict "${args[@]}" || rc=1
                 else
                   printf '%s\n' "$text" | "${RUNNER_TEMP}/slop-chop" check "${args[@]}" || true
                 fi

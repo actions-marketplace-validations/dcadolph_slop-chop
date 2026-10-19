@@ -31,7 +31,8 @@ Notes:
   sentences by hand, since no rule can rewrite them and the score stays high
   until they change.
 - Use `slop-chop check` instead of `fix` when the user only wants to see the
-  tells without changing anything. It exits non-zero when it finds any.
+  tells without changing anything. It exits non-zero when a tell carries score
+  weight, or on any finding with `--strict`.
 - Pass `--dialect american|british` or `--preset plain` through when the user
   names a spelling variant or wants corporate phrasing flattened.
 
