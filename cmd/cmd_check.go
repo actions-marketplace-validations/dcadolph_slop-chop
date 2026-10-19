@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -36,18 +37,27 @@ func checkCmd() *cobra.Command {
 	f.AddFlag(&config.FlagPretty)
 	f.AddFlag(&config.FlagWhy)
 	f.AddFlag(&config.FlagAs)
+	f.AddFlag(&config.FlagSARIF)
 	return cmd
 }
 
 // runCheck scans stdin or every file argument and returns errFindings when any input
 // has slop.
 func runCheck(cmd *cobra.Command, args []string) error {
-	if config.JSON() && len(args) > 1 {
+	switch {
+	case config.SARIF() && config.JSON():
+		return fmt.Errorf("cannot use --sarif with --json")
+	case config.SARIF() && len(args) == 0:
+		return fmt.Errorf("--sarif needs a file argument, not stdin")
+	case config.JSON() && len(args) > 1:
 		return fmt.Errorf("--json takes at most one file")
 	}
 	s, _, err := newSanitizer()
 	if err != nil {
 		return err
+	}
+	if config.SARIF() {
+		return checkSARIF(cmd, s, args)
 	}
 	if len(args) == 0 {
 		raw, err := readInput("", cmd.InOrStdin())
@@ -86,19 +96,63 @@ func runCheck(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// checkOne reports findings for one input and returns errFindings when there are any.
-// Findings on a file are prefixed with its path, so a terminal can jump to the spot. When
-// asSource is true the text is a source file's comment mask, whether it came from a path
-// or from stdin with --as, so cleanup findings are dropped: a spacing nit inside a comment
-// is not a tell, and fix will never rewrite it. The rest are placed against raw, the
-// original, because the mask counts a multibyte rune of code as several columns.
-func checkOne(s *sanitize.Sanitizer, text, raw, path string, asSource bool, stdout, stderr io.Writer) error {
-	findings := s.Check(text)
-	if asSource {
-		findings = dropTidyFindings(findings)
-		if err := sanitize.Locate(raw, findings); err != nil {
+// checkSARIF checks every file argument and writes one SARIF log covering all of them. It
+// returns errFindings when any file has a finding, the same as the usual output.
+func checkSARIF(cmd *cobra.Command, s *sanitize.Sanitizer, args []string) error {
+	wd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("sarif: working directory: %w", err)
+	}
+	files := make([]sarifFile, 0, len(args))
+	found := false
+	for _, path := range args {
+		raw, err := readInput(path, cmd.InOrStdin())
+		if err != nil {
 			return err
 		}
+		text, ok := maskProse(path, raw, cmd.ErrOrStderr())
+		if !ok {
+			continue
+		}
+		findings, err := checkFindings(s, text, raw, source.Is(path))
+		if err != nil {
+			return err
+		}
+		found = found || len(findings) > 0
+		files = append(files, sarifFile{URI: artifactURI(path, wd), Raw: raw, Findings: findings})
+	}
+	if err := writeJSON(cmd.OutOrStdout(), buildSARIF(s, resolveVersion(), files), config.Pretty()); err != nil {
+		return err
+	}
+	if found {
+		return errFindings
+	}
+	return nil
+}
+
+// checkFindings checks text. When asSource is true the text is a source file's comment
+// mask, whether it came from a path or from stdin with --as, so cleanup findings are
+// dropped: a spacing nit inside a comment is not a tell, and fix will never rewrite it. The
+// rest are placed against raw, the original, because the mask counts a multibyte rune of
+// code as several columns.
+func checkFindings(s *sanitize.Sanitizer, text, raw string, asSource bool) ([]sanitize.Finding, error) {
+	findings := s.Check(text)
+	if !asSource {
+		return findings, nil
+	}
+	findings = dropTidyFindings(findings)
+	if err := sanitize.Locate(raw, findings); err != nil {
+		return nil, err
+	}
+	return findings, nil
+}
+
+// checkOne reports findings for one input and returns errFindings when there are any.
+// Findings on a file are prefixed with its path, so a terminal can jump to the spot.
+func checkOne(s *sanitize.Sanitizer, text, raw, path string, asSource bool, stdout, stderr io.Writer) error {
+	findings, err := checkFindings(s, text, raw, asSource)
+	if err != nil {
+		return err
 	}
 	if config.JSON() {
 		if err := writeJSON(stdout, checkReport{Findings: jsonutil.OrEmpty(findings)}, config.Pretty()); err != nil {
