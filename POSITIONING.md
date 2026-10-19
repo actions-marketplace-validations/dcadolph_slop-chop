@@ -28,12 +28,12 @@ row bounds the attacker rather than the rules: a swap never rebuilds a sentence,
 reaches a shape. A lookup loses to a lookup. How shapes fare against a model told to rewrite
 is unmeasured.
 
-**The engine is quiet on writing it has never seen.** 886 README files from repositories
-with no push after 2021, across seven language ecosystems: seven reach the reads-clean
-line, 0.79 percent. An earlier draw of 1270 reached zero, and the difference is the
-evidence component, which is what lets a long machine document score at all. The rules
-that fire on human prose are the lexical ones, and none reaches seven percent of
-documents.
+**The engine is quiet on writing it has never seen.** 886 README files written before 2022,
+from abandoned repositories and from maintained ones read at their last pre-2022 commit,
+across seven language ecosystems: seven reach the reads-clean line, 0.8 percent. An
+earlier draw of 1270 reached zero, and the difference is the evidence component, which is
+what lets a long machine document score at all. The rules that fire on human prose are the
+lexical ones, and none reaches eight percent of documents.
 
 **The score does not yet claim what people think it claims.** The locked corpus has never
 been rated, so there is no evidence the number tracks what a reader perceives. Until

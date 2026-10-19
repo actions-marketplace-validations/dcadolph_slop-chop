@@ -142,12 +142,16 @@ was written before a general writing model existed.
 | Median score | 1 | 4 |
 | p90 / p99 | 13 / 22 | 15 / 26 |
 | Worst sample | 35 | 36 |
-| **Scoring 25 or higher** | **4** | **4** |
+| **Scoring 25 or higher** | **4** | **3** |
 
-886 documents across Go, Python, Rust, JavaScript, Java, Ruby, and C++, of which eight
-reach the reads-clean line: 0.9 percent. The maintained column read three until the
+886 documents across Go, Python, Rust, JavaScript, Java, Ruby, and C++, of which seven
+reach the reads-clean line: 0.8 percent. The maintained column read three until the
 participle tail signal of 2026-10-05 moved one document from 24 to 25, which the recheck
-that day missed because it ran the abandoned column only. The clause habit and the three
+that day missed because it ran the abandoned column only. It reads three again since
+v0.49.0, which stopped reading a Greek mu as a Latin lookalike: the protocolbuffers/protobuf
+sample, a README for the μpb C library, fell from 29 to 12. That release shipped with the
+old count, so rerunning both columns is now a step in
+[changing the scoring](SCORING.md#changing-the-scoring). The clause habit and the three
 rules added beside it on 2026-10-08 moved no document in either column, measured on the
 engine before and after. The second column is the check on the first: a
 repository untouched since 2021 is an abandoned one, and abandoned projects might write
@@ -161,11 +165,12 @@ to clean. The section on full-length prose above carries the other half of that 
 numbers here come from a fresh collection under the current ruleset rather than the older
 one, so the sample is smaller than the draw that reported zero.
 
-The rules that do fire on human prose are worth naming: `word:powerful` leads at six
-percent of documents, then curly quotes, `structural:bold-bullet-run`, and
-`structural:template-stem`. Nothing reaches seven percent. The character rules dominate the
-raw counts and contribute nothing to the score, which is the separation between a finding
-and a score weight doing its job on writing it has never seen.
+The rules that do fire on human prose are worth naming: `word:ensure` leads at seven
+percent of documents, then `word:powerful` and curly quotes at six, then
+`structural:bold-bullet-run` and `structural:template-stem`. Nothing reaches eight percent.
+The character rules dominate the raw counts and contribute nothing to the score, which is
+the separation between a finding and a score weight doing its job on writing it has never
+seen.
 
 This measures quiet, not detection. There are no machine samples in it, so it says nothing
 about recall, and a clean sweep is evidence the engine stays out of the way rather than
