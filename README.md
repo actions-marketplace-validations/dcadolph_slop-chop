@@ -329,6 +329,37 @@ need GitHub Code Security. A pull request from a fork gets a read-only token, so
 fails there. On the command line, `slop-chop check --sarif` writes the same log to stdout for
 any number of files.
 
+To hold the pull request title and body to the same line, set `pull-request: "true"`. Run it
+as its own workflow with the `edited` type, so a title or description edit checks again
+without rerunning the rest of your CI:
+
+```yaml
+name: slop-chop pull request
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+jobs:
+  text:
+    if: github.event.pull_request.user.type != 'Bot'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dcadolph/slop-chop@v0.50.0
+        with:
+          pull-request: "true"
+```
+
+The title and body are checked as one text, the title on line 1 and the body from line 3,
+under the same `max` and `strict` as files. The text comes from the event, so the check
+needs no token and works on pull requests from forks. A rerun reads the text as it was when
+the run started, so after an edit the `edited` run is the one that counts. The `if` skips
+Dependabot and Renovate, whose bodies carry upstream release notes, and the checkout lets
+the repo's `.slop-chop.json` apply. Add `files` to check files in the same step, or set
+`pull-request-title` and `pull-request-body` to check other text from a workflow on another
+trigger. Code blocks and HTML comments are skipped, so a pull request template does not
+count against the author. To silence one line, the author puts a comment GitHub does not
+render above it: `<!-- slop-chop-ignore-next-line -->`.
+
 ## Use it as a Claude Code plugin
 
 ![An agent drafts sloppy text, slop-chop scores it 80 with 18 findings, the agent rewrites, and the revision scores 0](docs/assets/agent-loop.gif)

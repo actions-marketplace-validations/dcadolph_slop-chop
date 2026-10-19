@@ -199,7 +199,7 @@ There is a second problem a model cannot solve for you. Every tell that gets fam
 
     ---
 
-    `check` fails a pull request when it finds slop, and `fix` can push the cleanup straight back to the branch. A ready-made GitHub Action wires both into your pipeline in a few lines, and its SARIF log puts each finding on the diff as a code scanning alert.
+    `check` fails a pull request when it finds slop, and `fix` can push the cleanup straight back to the branch. A ready-made GitHub Action wires both into your pipeline in a few lines, and its SARIF log puts each finding on the diff as a code scanning alert. It can hold the pull request title and body to the same line.
 
 -   :material-robot-happy:{ .lg .middle } __Claude Code plugin__
 
