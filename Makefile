@@ -194,6 +194,8 @@ check-versions:
 	fail=0; \
 	pins=$$(grep -oE 'dcadolph/slop-chop@v[0-9]+\.[0-9]+\.[0-9]+' README.md | sort -u | wc -l | tr -d ' '); \
 	if [ "$$pins" != "1" ]; then echo "README.md pins more than one version"; fail=1; fi; \
+	badge=$$(grep -oE 'img.shields.io/badge/release-v[0-9]+\.[0-9]+\.[0-9]+' README.md | sed 's/.*release-v//'); \
+	if [ "$$badge" != "$$pin" ]; then echo "README.md release badge names v$$badge, README pins $$pin"; fail=1; fi; \
 	for f in npm/package.json vscode/package.json obsidian/manifest.json; do \
 		v=$$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' $$f | head -1); \
 		if [ "$$v" != "$$pin" ]; then echo "$$f is $$v, README pins $$pin"; fail=1; fi; \
