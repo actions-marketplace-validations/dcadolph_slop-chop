@@ -20,6 +20,10 @@ import (
 // shows next to its tools.
 const serverName = "slop-chop"
 
+// siteURL is the project site. The handshake names it, and the server's icons are served
+// from it, so a client listing servers can show the slop-chop mark.
+const siteURL = "https://slop-chop.com"
+
 // maxTextBytes bounds the text one call may carry, matching the hosted API's cap. Anything
 // larger is a mistake rather than a draft, and refusing it keeps one call from pinning the
 // process on a pathological input.
@@ -89,9 +93,14 @@ func NewServer(sanitizers Sanitizers, rewriter Rewriter, fingerprints Fingerprin
 	}
 	srv := &Server{
 		sdk: mcpsdk.NewServer(&mcpsdk.Implementation{
-			Name:    serverName,
-			Title:   serverName,
-			Version: version,
+			Name:       serverName,
+			Title:      serverName,
+			Version:    version,
+			WebsiteURL: siteURL,
+			Icons: []mcpsdk.Icon{
+				{Source: siteURL + "/assets/icon.png", MIMEType: "image/png", Sizes: []string{"256x256"}},
+				{Source: siteURL + "/assets/icon-512.png", MIMEType: "image/png", Sizes: []string{"512x512"}},
+			},
 		}, nil),
 		sanitizers:   sanitizers,
 		rewriter:     rewriter,
