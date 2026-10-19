@@ -80,8 +80,8 @@ Three measurements, all reproducible from this repository. [docs/BENCHMARK.md](d
 has the method and the caveats.
 
 It stays quiet on human writing. Scored against 886 open-source READMEs across seven
-language ecosystems, most from projects with no push since 2021, eight reach the line where
-text stops reading clean. That is 0.9 percent.
+language ecosystems, most from projects with no push since 2021, seven reach the line where
+text stops reading clean. That is 0.8 percent.
 
 Word lists lose to a thesaurus. `slop-chop attack` swaps text to dodge the rules without
 improving it, and 33 of 74 word tells slip past. Only 1 of 90 structural tells does, which
@@ -238,7 +238,7 @@ jobs:
 
 Set `max` to move the line, or `max: 100` to turn the score gate off. Set `strict: "true"` to
 fail on any single finding, the way `slop-chop check` does on the command line. The default
-line sits where ordinary human writing almost never lands: 0.9 percent of the 886 READMEs in
+line sits where ordinary human writing almost never lands: 0.8 percent of the 886 READMEs in
 the [benchmark](docs/BENCHMARK.md) score 25 or more.
 
 The action builds the engine from the tag you name, so the tag pins the engine and its

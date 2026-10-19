@@ -89,3 +89,14 @@ go test ./sanitize -run TestScoringContract -update-scoring
 ```
 
 Add a row to the table above naming what moved, and commit the pinned file with the change.
+
+Then rerun the human-prose measurement in [the benchmark](BENCHMARK.md), both columns,
+since the scoring contract covers neither. The two README corpora stay local, and
+`evaldata/README.md` says how to collect them:
+
+```sh
+go run ./evaldata/harness -pre2022
+go run ./evaldata/harness -pre2022 -pre2022-file evaldata/pinned.jsonl
+```
+
+A moved count changes the benchmark table, the README, and POSITIONING.md together.
