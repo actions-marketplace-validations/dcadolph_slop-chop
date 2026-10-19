@@ -102,11 +102,17 @@ func NewServer(sanitizers Sanitizers, rewriter Rewriter, fingerprints Fingerprin
 }
 
 // Run serves the tools over stdin and stdout until the client disconnects or ctx is canceled.
-// A client closing the pipe is how this server is meant to end, so an end of stream and a
-// canceled context are both a clean return: reporting them as failures would have every
-// normal shutdown log an error and exit non-zero.
 func (srv *Server) Run(ctx context.Context) error {
-	err := srv.sdk.Run(ctx, &mcpsdk.StdioTransport{})
+	return srv.serve(ctx, &mcpsdk.StdioTransport{})
+}
+
+// serve serves the tools over t. It answers every call it has read before an end of input
+// ends the session, so a client that sends its requests and closes the pipe still gets its
+// replies. A client closing the pipe is how this server is meant to end, so an end of stream
+// and a canceled context are both a clean return: reporting them as failures would have
+// every normal shutdown log an error and exit non-zero.
+func (srv *Server) serve(ctx context.Context, t mcpsdk.Transport) error {
+	err := srv.sdk.Run(ctx, &drainTransport{inner: t})
 	if errors.Is(err, io.EOF) || errors.Is(err, context.Canceled) {
 		return nil
 	}
