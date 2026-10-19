@@ -3,6 +3,7 @@ package cmd
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -77,6 +78,73 @@ func TestCheckAsIndentedCommentKeepsSentenceStart(t *testing.T) {
 	}
 	if !strings.Contains(stdout, `"match":"It is important to note that w","replacement":"W"`) {
 		t.Errorf("stdout = %s, want the opener replaced by a capital W", stdout)
+	}
+}
+
+// TestCheckSourceColumns checks that a finding in a comment is placed by rune column in the
+// original file, whether the file comes by path or through stdin with --as. The mask blanks
+// each byte of code to a space, so a multibyte rune of code before the comment once pushed
+// the reported column right by its extra bytes.
+func TestCheckSourceColumns(t *testing.T) {
+	src := "package x\n\nvar s = \"ééé\" // We delve here.\n"
+	tests := []struct {
+		WantText string
+		WantJSON string
+		Args     []string
+		In       string
+	}{{ // Test 0: A source file read by path.
+		Args: []string{"check"}, WantText: ":3:21 word:delve",
+	}, { // Test 1: The same source read from stdin with --as.
+		Args: []string{"check", "--json", "--as", ".go"}, In: src, WantJSON: `"line":3,"col":21`,
+	}}
+	for testNum, test := range tests {
+		t.Run(fmt.Sprintf("test %d", testNum), func(t *testing.T) {
+			args := test.Args
+			if test.In == "" {
+				args = append(args, writeTemp(t, t.TempDir(), "x.go", src))
+			}
+			stdout, stderr, err := runCLI(t, args, test.In)
+			if !errors.Is(err, errFindings) {
+				t.Fatalf("err = %v, want errFindings", err)
+			}
+			if test.WantText != "" && !strings.Contains(stderr, test.WantText) {
+				t.Errorf("stderr = %q, want %q", stderr, test.WantText)
+			}
+			if test.WantJSON != "" && !strings.Contains(stdout, test.WantJSON) {
+				t.Errorf("stdout = %s, want %s", stdout, test.WantJSON)
+			}
+		})
+	}
+}
+
+// TestAttackWriteSkipsSource checks that attack -w leaves a source file byte for byte
+// intact, while attack without -w still reports on its comments. The attack reads a source
+// file as its comment mask, so writing the result once blanked every line of code.
+func TestAttackWriteSkipsSource(t *testing.T) {
+	src := "package main\n\n// We delve into a robust plan.\nfunc F() int { return 42 }\n"
+	goFile := writeTemp(t, t.TempDir(), "main.go", src)
+
+	_, stderr, err := runCLI(t, []string{"attack", "-w", goFile}, "")
+	if err != nil {
+		t.Fatalf("attack -w err = %v, want nil with the file skipped", err)
+	}
+	if !strings.Contains(stderr, "skipping "+goFile) {
+		t.Errorf("stderr = %q, want a skip warning for %q", stderr, goFile)
+	}
+	got, err := os.ReadFile(filepath.Clean(goFile))
+	if err != nil {
+		t.Fatalf("read back: %v", err)
+	}
+	if string(got) != src {
+		t.Errorf("attack -w changed a source file:\n got %q\nwant %q", got, src)
+	}
+
+	stdout, _, err := runCLI(t, []string{"attack", goFile}, "")
+	if err != nil {
+		t.Fatalf("attack err = %v, want nil", err)
+	}
+	if !strings.Contains(stdout, "word:delve") {
+		t.Errorf("stdout = %q, want the comment's tells in the report", stdout)
 	}
 }
 

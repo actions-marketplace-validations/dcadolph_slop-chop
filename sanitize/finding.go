@@ -1,6 +1,10 @@
 package sanitize
 
-import "fmt"
+import (
+	"cmp"
+	"fmt"
+	"slices"
+)
 
 // Finding records one place where a rule matched the text.
 type Finding struct {
@@ -30,4 +34,20 @@ func (f Finding) String() string {
 		return fmt.Sprintf("%d:%d %s: %q", f.Line, f.Col, f.Rule, f.Match)
 	}
 	return fmt.Sprintf("%d:%d %s: %q -> %q", f.Line, f.Col, f.Rule, f.Match, *f.Replacement)
+}
+
+// Locate refills the Line and Col of each finding from its Offset in text. It is for a
+// caller that checks a stand-in for the text and reports positions in the original, such
+// as a comment mask, which keeps every byte offset but blanks a multibyte rune of code to
+// several spaces. The findings must be in offset order, as Check returns them.
+func Locate(text string, findings []Finding) error {
+	byOffset := func(a, b Finding) int { return cmp.Compare(a.Offset, b.Offset) }
+	if !slices.IsSortedFunc(findings, byOffset) {
+		return fmt.Errorf("%w: findings out of offset order", ErrLocate)
+	}
+	if n := len(findings); n > 0 && (findings[0].Offset < 0 || findings[n-1].Offset > len(text)) {
+		return fmt.Errorf("%w: offset outside %d bytes of text", ErrLocate, len(text))
+	}
+	assignLineCol(text, findings)
+	return nil
 }

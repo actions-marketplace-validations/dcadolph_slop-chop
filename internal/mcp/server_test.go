@@ -5,6 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"image"
+	_ "image/png"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -64,6 +68,46 @@ func TestTools(t *testing.T) {
 			}
 			if diff := cmp.Diff(test.WantRequired, schema.Required, cmpopts.EquateEmpty()); diff != "" {
 				t.Errorf("required mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+// TestServerInfo checks that the handshake names the site and offers icons a client can
+// fetch. Each icon must point at a file the site ships, at the size and type it claims, so
+// renaming or resizing a site asset fails here instead of leaving clients a broken image.
+func TestServerInfo(t *testing.T) {
+	t.Parallel()
+	cs := newTestSession(t, NewServer(testSanitizers(), nil, nil, "test"))
+	info := cs.InitializeResult().ServerInfo
+	if diff := cmp.Diff(siteURL, info.WebsiteURL); diff != "" {
+		t.Errorf("website mismatch (-want +got):\n%s", diff)
+	}
+	if len(info.Icons) == 0 {
+		t.Fatal("server offers no icons")
+	}
+	for iconNum, icon := range info.Icons {
+		t.Run(fmt.Sprintf("icon %d", iconNum), func(t *testing.T) {
+			t.Parallel()
+			path, ok := strings.CutPrefix(icon.Source, siteURL+"/")
+			if !ok {
+				t.Fatalf("icon %q is not served from %s", icon.Source, siteURL)
+			}
+			f, err := os.Open(filepath.Join("..", "..", "docs", filepath.FromSlash(path)))
+			if err != nil {
+				t.Fatalf("site does not ship the icon: %v", err)
+			}
+			defer func() { _ = f.Close() }()
+			cfg, format, err := image.DecodeConfig(f)
+			if err != nil {
+				t.Fatalf("decode %s: %v", path, err)
+			}
+			if diff := cmp.Diff("image/"+format, icon.MIMEType); diff != "" {
+				t.Errorf("type mismatch (-want +got):\n%s", diff)
+			}
+			wantSizes := []string{fmt.Sprintf("%dx%d", cfg.Width, cfg.Height)}
+			if diff := cmp.Diff(wantSizes, icon.Sizes); diff != "" {
+				t.Errorf("sizes mismatch (-want +got):\n%s", diff)
 			}
 		})
 	}

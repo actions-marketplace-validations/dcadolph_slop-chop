@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://slop-chop.com"><img src="https://img.shields.io/badge/try_it-slop--chop.com-9bcf1a" alt="Try it at slop-chop.com"></a>
-  <a href="https://github.com/dcadolph/slop-chop/releases/latest"><img src="https://img.shields.io/github/v/release/dcadolph/slop-chop?color=9bcf1a" alt="Latest release"></a>
+  <a href="https://github.com/dcadolph/slop-chop/releases/latest"><img src="https://img.shields.io/badge/release-v0.49.0-9bcf1a" alt="Latest release"></a>
   <a href="https://github.com/dcadolph/slop-chop/actions/workflows/ci.yml"><img src="https://github.com/dcadolph/slop-chop/actions/workflows/ci.yml/badge.svg" alt="ci status"></a>
   <a href="https://pkg.go.dev/github.com/dcadolph/slop-chop/sanitize"><img src="https://pkg.go.dev/badge/github.com/dcadolph/slop-chop/sanitize.svg" alt="Go reference"></a>
 </p>
@@ -295,6 +295,39 @@ requests from a branch in the same repository. A pull request from a fork gets a
 token, so the push fails with a 403 no matter the `permissions` block. For fork pull requests
 use the check workflow above: it needs no write access and still fails the run on slop. To
 auto-fix your own branches, run the same fix-and-commit job on a `push` trigger instead.
+
+To see findings as code scanning alerts, on the pull request diff and in the Security tab,
+set `sarif` to a path and upload the log it writes:
+
+```yaml
+name: slop-chop
+on: pull_request
+jobs:
+  slop:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dcadolph/slop-chop@v0.49.0
+        with:
+          files: docs/intro.md docs/guide.md
+          sarif: slop-chop.sarif
+      - uses: github/codeql-action/upload-sarif@v4
+        if: ${{ !cancelled() }}
+        with:
+          sarif_file: slop-chop.sarif
+          category: slop-chop
+```
+
+The upload runs even when the score gate fails the job, so the alerts land on the pull request
+that caused them. Findings that count toward the score are warnings and the rest are
+notes. None are errors, so by default the alerts never fail the pull request check and the
+score stays the gate. Code scanning uploads are free on public repositories, and private ones
+need GitHub Code Security. A pull request from a fork gets a read-only token, so the upload
+fails there. On the command line, `slop-chop check --sarif` writes the same log to stdout for
+any number of files.
 
 ## Use it as a Claude Code plugin
 

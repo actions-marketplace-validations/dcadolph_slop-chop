@@ -109,6 +109,7 @@ mcpb:
 		GOOS=$$os GOARCH=$$arch $(GO) build -trimpath \
 			-ldflags "-s -w -X $(MODULE)/cmd.version=$(MCPB_VERSION)" \
 			-o $$work/server/$$bin .; \
+		cp docs/assets/icon-512.png $$work/icon.png; \
 		printf '%s\n' \
 			'{' \
 			'  "manifest_version": "0.3",' \
@@ -120,6 +121,7 @@ mcpb:
 			'  "homepage": "https://slop-chop.com",' \
 			'  "documentation": "https://github.com/dcadolph/slop-chop/blob/main/docs/MCP.md",' \
 			'  "license": "MIT",' \
+			'  "icon": "icon.png",' \
 			'  "server": {' \
 			'    "type": "binary",' \
 			"    \"entry_point\": \"server/$$bin\"," \
@@ -130,7 +132,7 @@ mcpb:
 			'    }' \
 			'  }' \
 			'}' > $$work/manifest.json; \
-		( cd $$work && zip -qr "../../../dist/slop-chop-mcp_$(MCPB_VERSION)_$${os}_$${arch}.mcpb" manifest.json server ); \
+		( cd $$work && zip -qr "../../../dist/slop-chop-mcp_$(MCPB_VERSION)_$${os}_$${arch}.mcpb" manifest.json icon.png server ); \
 	done; \
 	echo "built $$(ls dist/*.mcpb | wc -l | tr -d ' ') bundle(s) in dist/"
 
@@ -155,6 +157,10 @@ server-json:
 		printf '  "description": "Find and remove the writing patterns a profile lists. Deterministic rules, model rewrite opt-in.",\n'; \
 		printf '  "repository": { "url": "https://github.com/dcadolph/slop-chop", "source": "github" },\n'; \
 		printf '  "websiteUrl": "https://slop-chop.com",\n'; \
+		printf '%s\n' '  "icons": [' \
+			'    { "src": "https://slop-chop.com/assets/icon.png", "mimeType": "image/png", "sizes": ["256x256"] },' \
+			'    { "src": "https://slop-chop.com/assets/icon-512.png", "mimeType": "image/png", "sizes": ["512x512"] }' \
+			'  ],'; \
 		printf '  "version": "%s",\n' "$$ver"; \
 		printf '  "packages": [\n'; \
 		first=1; \
@@ -188,6 +194,8 @@ check-versions:
 	fail=0; \
 	pins=$$(grep -oE 'dcadolph/slop-chop@v[0-9]+\.[0-9]+\.[0-9]+' README.md | sort -u | wc -l | tr -d ' '); \
 	if [ "$$pins" != "1" ]; then echo "README.md pins more than one version"; fail=1; fi; \
+	badge=$$(grep -oE 'img.shields.io/badge/release-v[0-9]+\.[0-9]+\.[0-9]+' README.md | sed 's/.*release-v//'); \
+	if [ "$$badge" != "$$pin" ]; then echo "README.md release badge names v$$badge, README pins $$pin"; fail=1; fi; \
 	for f in npm/package.json vscode/package.json obsidian/manifest.json; do \
 		v=$$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' $$f | head -1); \
 		if [ "$$v" != "$$pin" ]; then echo "$$f is $$v, README pins $$pin"; fail=1; fi; \

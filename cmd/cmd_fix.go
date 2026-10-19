@@ -417,11 +417,7 @@ const (
 // clipField trims s to at most maxFeedbackField runes, marking a cut with an ellipsis. Judge
 // feedback is meant to be a short pointer, so a longer field is a malfunction, not signal.
 func clipField(s string) string {
-	r := []rune(s)
-	if len(r) <= maxFeedbackField {
-		return s
-	}
-	return string(r[:maxFeedbackField]) + "…"
+	return clipRunes(s, maxFeedbackField)
 }
 
 func feedbackNotes(issues []rewrite.Issue) []string {

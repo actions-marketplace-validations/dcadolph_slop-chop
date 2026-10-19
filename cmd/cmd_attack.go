@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/dcadolph/slop-chop/cmd/config"
+	"github.com/dcadolph/slop-chop/internal/source"
 	"github.com/dcadolph/slop-chop/sanitize"
 )
 
@@ -27,7 +28,9 @@ shape has to be rebuilt to escape it, which no substitution can do, and that is 
 structural tell counts double toward the score. Run this on your own corpus to find where
 the rules are thin, and treat a class that evades easily as a class to strengthen.
 
-The attack writes no files and changes no rules. Its output is a measurement.`,
+The attack changes no rules, and without -w it writes no files. Its output is a
+measurement. With -w it rewrites prose files in place and skips source files, whose
+comments it reads but whose code it must never write.`,
 		Args: cobra.ArbitraryArgs,
 		RunE: runAttack,
 	}
@@ -65,6 +68,10 @@ func runAttack(cmd *cobra.Command, args []string) error {
 		return attackOne(s, text, "", cmd.OutOrStdout())
 	}
 	for _, path := range args {
+		if config.Write() && source.Is(path) {
+			warnSourceSkip(cmd.ErrOrStderr(), path)
+			continue
+		}
 		text, ok, err := readProse(path, cmd.InOrStdin(), cmd.ErrOrStderr())
 		if err != nil {
 			return err
