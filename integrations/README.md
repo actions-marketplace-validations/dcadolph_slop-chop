@@ -36,13 +36,14 @@ Flag slop in your commits with [pre-commit](https://pre-commit.com). In a repo's
 
 ```yaml
 - repo: https://github.com/dcadolph/slop-chop
-  rev: v0.50.0
+  rev: v0.51.0
   hooks:
     - id: slop-chop
 ```
 
-It flags tells in Markdown and text files and fails when any are found. Add
-`args: [--preset, cleaver]` for the aggressive list. To rewrite instead of flag, set
+It flags tells in Markdown and text files and fails on findings that carry score weight.
+Add `args: [--strict]` to fail on any finding, or `args: [--preset, cleaver]` for the
+aggressive list. To rewrite instead of flag, set
 `entry: slop-chop fix --write` in your config's hook override.
 
 ## GitHub Action

@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://slop-chop.com"><img src="https://img.shields.io/badge/try_it-slop--chop.com-9bcf1a" alt="Try it at slop-chop.com"></a>
-  <a href="https://github.com/dcadolph/slop-chop/releases/latest"><img src="https://img.shields.io/badge/release-v0.50.0-9bcf1a" alt="Latest release"></a>
+  <a href="https://github.com/dcadolph/slop-chop/releases/latest"><img src="https://img.shields.io/badge/release-v0.51.0-9bcf1a" alt="Latest release"></a>
   <a href="https://github.com/dcadolph/slop-chop/actions/workflows/ci.yml"><img src="https://github.com/dcadolph/slop-chop/actions/workflows/ci.yml/badge.svg" alt="ci status"></a>
   <a href="https://pkg.go.dev/github.com/dcadolph/slop-chop/sanitize"><img src="https://pkg.go.dev/badge/github.com/dcadolph/slop-chop/sanitize.svg" alt="Go reference"></a>
 </p>
@@ -106,7 +106,7 @@ slop-chop fix -w notes.md
 # Pipe text through it
 echo "In summary, a robust—and seamless—result." | slop-chop fix
 
-# Flag slop without changing anything (exits non-zero if it finds any)
+# Flag slop without changing anything (exits non-zero if a finding carries score weight)
 slop-chop check notes.md
 
 # Check or fix several files at once
@@ -142,9 +142,10 @@ for you, and how the score moved.
 
 ## Modes
 
-- `check` flags what it finds and exits non-zero. Drop it in CI. Add `--why` and every
-  finding carries a plain-words line saying what fired and what happens to it, the same
-  explanations the web app shows on a tap.
+- `check` flags what it finds and exits non-zero when a finding carries score weight.
+  Cleanups with no weight are listed without failing. Pass `--strict` to fail on any
+  finding. Drop it in CI. Add `--why` and every finding carries a plain-words line saying
+  what fired and what happens to it, the same explanations the web app shows on a tap.
 - `fix` writes the cleaned text to stdout and leaves your file alone. Pass `-w` to change
   the file in place instead.
 - `score` measures how densely the text carries the patterns your profile lists, 0 to 100.
@@ -225,7 +226,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dcadolph/slop-chop@v0.50.0
+      - uses: dcadolph/slop-chop@v0.51.0
         with:
           files: docs/intro.md docs/guide.md
           # max: 25                   # optional, the score line
@@ -237,9 +238,9 @@ jobs:
 ```
 
 Set `max` to move the line, or `max: 100` to turn the score gate off. Set `strict: "true"` to
-fail on any single finding, the way `slop-chop check` does on the command line. The default
-line sits where ordinary human writing almost never lands: 0.8 percent of the 886 READMEs in
-the [benchmark](docs/BENCHMARK.md) score 25 or more.
+fail on any single finding, the way `slop-chop check --strict` does on the command line. The
+default line sits where ordinary human writing almost never lands: 0.8 percent of the 886
+READMEs in the [benchmark](docs/BENCHMARK.md) score 25 or more.
 
 The action builds the engine from the tag you name, so the tag pins the engine and its
 scoring version together. A newer tag can score the same file differently when its scoring
@@ -282,7 +283,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.head_ref }}
-      - uses: dcadolph/slop-chop@v0.50.0
+      - uses: dcadolph/slop-chop@v0.51.0
         with:
           files: docs/intro.md docs/guide.md
           mode: fix
@@ -310,7 +311,7 @@ jobs:
       security-events: write
     steps:
       - uses: actions/checkout@v4
-      - uses: dcadolph/slop-chop@v0.50.0
+      - uses: dcadolph/slop-chop@v0.51.0
         with:
           files: docs/intro.md docs/guide.md
           sarif: slop-chop.sarif
@@ -328,6 +329,37 @@ score stays the gate. Code scanning uploads are free on public repositories, and
 need GitHub Code Security. A pull request from a fork gets a read-only token, so the upload
 fails there. On the command line, `slop-chop check --sarif` writes the same log to stdout for
 any number of files.
+
+To hold the pull request title and body to the same line, set `pull-request: "true"`. Run it
+as its own workflow with the `edited` type, so a title or description edit checks again
+without rerunning the rest of your CI:
+
+```yaml
+name: slop-chop pull request
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+jobs:
+  text:
+    if: github.event.pull_request.user.type != 'Bot'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dcadolph/slop-chop@v0.51.0
+        with:
+          pull-request: "true"
+```
+
+The title and body are checked as one text, the title on line 1 and the body from line 3,
+under the same `max` and `strict` as files. The text comes from the event, so the check
+needs no token and works on pull requests from forks. A rerun reads the text as it was when
+the run started, so after an edit the `edited` run is the one that counts. The `if` skips
+Dependabot and Renovate, whose bodies carry upstream release notes, and the checkout lets
+the repo's `.slop-chop.json` apply. Add `files` to check files in the same step, or set
+`pull-request-title` and `pull-request-body` to check other text from a workflow on another
+trigger. Code blocks and HTML comments are skipped, so a pull request template does not
+count against the author. To silence one line, the author puts a comment GitHub does not
+render above it: `<!-- slop-chop-ignore-next-line -->`.
 
 ## Use it as a Claude Code plugin
 

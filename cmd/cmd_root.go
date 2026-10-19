@@ -55,7 +55,8 @@ func rootCmd() *cobra.Command {
 		Short: "Chop the slop from text.",
 		Long: `slop-chop finds and removes AI writing tells from text.
 
-check reports the tells and exits non-zero when it finds any. fix rewrites the text.
+check reports the tells and exits non-zero when one carries score weight, or on any
+with --strict. fix rewrites the text.
 With no file, both read stdin. The --rewrite pass needs the ANTHROPIC_API_KEY
 environment variable. When --profile is not set, the nearest .slop-chop.json from the
 working directory upward extends the built-in profile, so a repo's rules hold from any

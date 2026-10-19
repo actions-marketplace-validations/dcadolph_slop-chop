@@ -207,6 +207,83 @@ jobs:
           jq -e '[.runs[0].results[].locations[0].physicalLocation.artifactLocation.uri] | all(. == "dirty.md")' slop-chop.sarif
           jq -e '[.runs[0].results[].level] | all(. != "error")' slop-chop.sarif
 
+  # The text inputs stand in for the pull request event, so the job runs on every push.
+  # Steps that leave the text to its event defaults run only on the event they need.
+  action-checks-pull-request:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: A clean title and body pass
+        uses: ./
+        with:
+          pull-request: "true"
+          pull-request-title: Add retry logic to the fetch loop
+          pull-request-body: |
+            The fetch loop gave up after one 502 from the registry. This retries up to
+            three times with a short backoff and logs each attempt.
+      - name: A generated body fails the default gate
+        id: generated
+        continue-on-error: true
+        uses: ./
+        with:
+          pull-request: "true"
+          pull-request-title: Add retry logic
+          pull-request-body: >-
+            This PR introduces a comprehensive retry mechanism that seamlessly handles
+            transient failures. Furthermore, it is important to note that it delivers a
+            robust foundation.
+      - name: The generated body must have failed
+        run: test "${{ steps.generated.outcome }}" = "failure"
+      - name: A title with two tells and no body fails the default gate
+        id: title
+        if: github.event_name == 'push'
+        continue-on-error: true
+        uses: ./
+        with:
+          pull-request: "true"
+          pull-request-title: "feat: leverage comprehensive caching layer"
+      - name: The title must have failed
+        if: github.event_name == 'push'
+        run: test "${{ steps.title.outcome }}" = "failure"
+      - name: The default gate lets a tidy-up through
+        uses: ./
+        with:
+          pull-request: "true"
+          pull-request-title: Tidy the intro
+          pull-request-body: A plain sentence  with a double space.
+      - name: Strict mode fails the same text
+        id: strict
+        continue-on-error: true
+        uses: ./
+        with:
+          pull-request: "true"
+          pull-request-title: Tidy the intro
+          pull-request-body: A plain sentence  with a double space.
+          strict: "true"
+      - name: Strict mode must have failed
+        run: test "${{ steps.strict.outcome }}" = "failure"
+      - name: A push has no pull request text and passes
+        if: github.event_name == 'push'
+        uses: ./
+        with:
+          pull-request: "true"
+      - name: Fix mode refuses the pull request text
+        id: fix
+        continue-on-error: true
+        uses: ./
+        with:
+          files: README.md
+          mode: fix
+          pull-request: "true"
+      - name: Fix mode must have failed
+        run: test "${{ steps.fix.outcome }}" = "failure"
+      - name: A real pull request is read from its event
+        if: github.event_name == 'pull_request'
+        uses: ./
+        with:
+          pull-request: "true"
+          max: "100"
+
   docs-pass-their-own-check:
     needs: build
     runs-on: ubuntu-latest
@@ -217,7 +294,7 @@ jobs:
           name: slop-chop-binary
       - run: chmod +x slop-chop
       - name: The docs must pass slop-chop
-        run: ./slop-chop check README.md ENGINE.md docs/PROFILE.md docs/VOICE.md docs/BENCHMARK.md docs/SCORING.md docs/ITSELF.md docs/PLUGIN.md docs/SLACK.md docs/MCP.md docs/TELLS.md docs/API.md docs/PRIVACY.md docs/quickstart.md docs/WEB.md
+        run: ./slop-chop check --strict README.md ENGINE.md docs/PROFILE.md docs/VOICE.md docs/BENCHMARK.md docs/SCORING.md docs/ITSELF.md docs/PLUGIN.md docs/SLACK.md docs/MCP.md docs/TELLS.md docs/API.md docs/PRIVACY.md docs/quickstart.md docs/WEB.md
 
   check-fails-on-slop:
     needs: build

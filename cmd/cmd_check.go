@@ -24,7 +24,7 @@ type checkReport struct {
 func checkCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "check [file ...]",
-		Short: "Report AI tells and exit non-zero when any are found.",
+		Short: "Report AI tells and exit non-zero when one carries score weight.",
 		Args:  cobra.ArbitraryArgs,
 		RunE:  runCheck,
 	}
@@ -38,11 +38,12 @@ func checkCmd() *cobra.Command {
 	f.AddFlag(&config.FlagWhy)
 	f.AddFlag(&config.FlagAs)
 	f.AddFlag(&config.FlagSARIF)
+	f.AddFlag(&config.FlagStrict)
 	return cmd
 }
 
 // runCheck scans stdin or every file argument and returns errFindings when any input
-// has slop.
+// has a finding that fails check.
 func runCheck(cmd *cobra.Command, args []string) error {
 	switch {
 	case config.SARIF() && config.JSON():
@@ -97,7 +98,8 @@ func runCheck(cmd *cobra.Command, args []string) error {
 }
 
 // checkSARIF checks every file argument and writes one SARIF log covering all of them. It
-// returns errFindings when any file has a finding, the same as the usual output.
+// returns errFindings when any file has a finding that fails check, the same as the usual
+// output.
 func checkSARIF(cmd *cobra.Command, s *sanitize.Sanitizer, args []string) error {
 	wd, err := os.Getwd()
 	if err != nil {
@@ -118,7 +120,7 @@ func checkSARIF(cmd *cobra.Command, s *sanitize.Sanitizer, args []string) error 
 		if err != nil {
 			return err
 		}
-		found = found || len(findings) > 0
+		found = found || countFailing(s, findings) > 0
 		files = append(files, sarifFile{URI: artifactURI(path, wd), Raw: raw, Findings: findings})
 	}
 	if err := writeJSON(cmd.OutOrStdout(), buildSARIF(s, resolveVersion(), files), config.Pretty()); err != nil {
@@ -147,13 +149,14 @@ func checkFindings(s *sanitize.Sanitizer, text, raw string, asSource bool) ([]sa
 	return findings, nil
 }
 
-// checkOne reports findings for one input and returns errFindings when there are any.
-// Findings on a file are prefixed with its path, so a terminal can jump to the spot.
+// checkOne reports findings for one input and returns errFindings when one of them fails
+// check. Findings on a file are prefixed with its path, so a terminal can jump to the spot.
 func checkOne(s *sanitize.Sanitizer, text, raw, path string, asSource bool, stdout, stderr io.Writer) error {
 	findings, err := checkFindings(s, text, raw, asSource)
 	if err != nil {
 		return err
 	}
+	failing := countFailing(s, findings)
 	if config.JSON() {
 		if err := writeJSON(stdout, checkReport{Findings: jsonutil.OrEmpty(findings)}, config.Pretty()); err != nil {
 			return err
@@ -176,18 +179,51 @@ func checkOne(s *sanitize.Sanitizer, text, raw, path string, asSource bool, stdo
 				target = "stdin"
 			}
 			_, _ = fmt.Fprintf(stderr, "slop-chop: %s is clean\n", target)
+		case failing == 0 && fixable > 0:
+			_, _ = fmt.Fprintf(stderr,
+				"slop-chop: %d finding(s), none with score weight, so none fail check; %d fixable with 'slop-chop fix'\n",
+				len(findings), fixable)
+		case failing == 0:
+			_, _ = fmt.Fprintf(stderr,
+				"slop-chop: %d finding(s), none with score weight, so none fail check; all flag-only\n",
+				len(findings))
 		case fixable > 0:
 			_, _ = fmt.Fprintf(stderr,
-				"slop-chop: %d finding(s), %d fixable with 'slop-chop fix'; silence a one-off with an allow entry or <!-- slop-chop-ignore -->\n",
-				len(findings), fixable)
+				"slop-chop: %d finding(s), %d fixable with 'slop-chop fix'%s; silence a one-off with an allow entry or <!-- slop-chop-ignore -->\n",
+				len(findings), fixable, unweightedNote(len(findings)-failing))
 		default:
 			_, _ = fmt.Fprintf(stderr,
-				"slop-chop: %d finding(s), all flag-only; rewrite them with a preset like --preset cleaver, or silence with an allow entry\n",
-				len(findings))
+				"slop-chop: %d finding(s), all flag-only%s; rewrite them with a preset like --preset cleaver, or silence with an allow entry\n",
+				len(findings), unweightedNote(len(findings)-failing))
 		}
 	}
-	if len(findings) > 0 {
+	if failing > 0 {
 		return errFindings
 	}
 	return nil
+}
+
+// countFailing counts the findings that fail check: every finding under --strict, otherwise
+// the ones that carry score weight through the profile, the same ones a SARIF log marks as
+// warnings.
+func countFailing(s *sanitize.Sanitizer, findings []sanitize.Finding) int {
+	if config.Strict() {
+		return len(findings)
+	}
+	n := 0
+	for _, f := range findings {
+		if s.Weight(f.Rule) > 0 {
+			n++
+		}
+	}
+	return n
+}
+
+// unweightedNote names the n findings of a failing report that carry no score weight, or
+// returns nothing when every finding fails.
+func unweightedNote(n int) string {
+	if n == 0 {
+		return ""
+	}
+	return fmt.Sprintf(", %d with no score weight that check does not fail on", n)
 }
