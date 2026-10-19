@@ -38,6 +38,12 @@ inputs:
       punctuation tidy-ups. By default only the score gate fails the run.
     required: false
     default: "false"
+  sarif:
+    description: In check mode, also write every finding to this path as one SARIF 2.1.0
+      log, for github/codeql-action/upload-sarif to show as code scanning alerts. Leave
+      empty to skip.
+    required: false
+    default: ""
   scoring-version:
     description: Fail the run when the engine's scoring version is not this number. Set it
       to the version your score gate was tuned against, so a tag bump that changes scoring
@@ -79,6 +85,7 @@ runs:
         MODE: ${{ inputs.mode }}
         MAX: ${{ inputs.max }}
         STRICT: ${{ inputs.strict }}
+        SARIF: ${{ inputs.sarif }}
         SCORING_VERSION: ${{ inputs.scoring-version }}
       run: |
         read -ra files <<< "$FILES"
@@ -110,6 +117,17 @@ runs:
               for f in "${files[@]}"; do
                 "${RUNNER_TEMP}/slop-chop" score --max "$MAX" "${args[@]}" "$f" || rc=1
               done
+            fi
+            if [ -n "$SARIF" ]; then
+              sarif_rc=0
+              "${RUNNER_TEMP}/slop-chop" check --sarif "${args[@]}" "${files[@]}" > "$SARIF" || sarif_rc=$?
+              # Exit 1 is findings, but a redirect that cannot open the path also exits 1,
+              # and every real run writes a log, even an empty one.
+              if [ "$sarif_rc" -gt 1 ] || [ ! -s "$SARIF" ]; then
+                echo "slop-chop: could not write the SARIF log to ${SARIF}" >&2
+                exit "$sarif_rc"
+              fi
+              echo "slop-chop wrote ${SARIF}"
             fi
             if [ "$rc" -ne 0 ]; then
               echo "slop-chop found slop. See the groups above." >&2

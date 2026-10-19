@@ -185,6 +185,28 @@ jobs:
       - name: The stale pin must have failed
         run: test "${{ steps.stalepin.outcome }}" = "failure"
 
+  # The SARIF log is written beside the gate, not instead of it. The gate is off here so
+  # the step passes, which also proves the findings exit from the SARIF call is not taken
+  # for a failure.
+  action-writes-sarif:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Write a file with tells
+        run: printf 'We delve into a robust plan.\n' > dirty.md
+      - name: The action writes a SARIF log
+        uses: ./
+        with:
+          files: dirty.md
+          max: "100"
+          sarif: slop-chop.sarif
+      - name: The log is SARIF 2.1.0 and names the findings
+        run: |
+          jq -e '.version == "2.1.0"' slop-chop.sarif
+          jq -e '.runs[0].results | length > 0' slop-chop.sarif
+          jq -e '[.runs[0].results[].locations[0].physicalLocation.artifactLocation.uri] | all(. == "dirty.md")' slop-chop.sarif
+          jq -e '[.runs[0].results[].level] | all(. != "error")' slop-chop.sarif
+
   docs-pass-their-own-check:
     needs: build
     runs-on: ubuntu-latest
