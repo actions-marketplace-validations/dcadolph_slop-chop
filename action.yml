@@ -6,8 +6,10 @@ branding:
 
 inputs:
   files:
-    description: Space separated list of files to check or fix.
-    required: true
+    description: Space separated list of files to check or fix. Leave empty to check
+      only the pull request text.
+    required: false
+    default: ""
   profile:
     description: Path to a JSON style profile. Leave empty for the built in profile.
     required: false
@@ -44,6 +46,22 @@ inputs:
       empty to skip.
     required: false
     default: ""
+  pull-request:
+    description: In check mode, also check the pull request title and body, under the
+      same max and strict gates as the files. A run with no pull request in its event
+      skips it.
+    required: false
+    default: "false"
+  pull-request-title:
+    description: The title checked when pull-request is true. Defaults to the title of
+      the pull request that triggered the run.
+    required: false
+    default: ${{ github.event.pull_request.title }}
+  pull-request-body:
+    description: The body checked when pull-request is true. Defaults to the body of the
+      pull request that triggered the run.
+    required: false
+    default: ${{ github.event.pull_request.body }}
   scoring-version:
     description: Fail the run when the engine's scoring version is not this number. Set it
       to the version your score gate was tuned against, so a tag bump that changes scoring
@@ -86,6 +104,9 @@ runs:
         MAX: ${{ inputs.max }}
         STRICT: ${{ inputs.strict }}
         SARIF: ${{ inputs.sarif }}
+        PULL_REQUEST: ${{ inputs.pull-request }}
+        PR_TITLE: ${{ inputs.pull-request-title }}
+        PR_BODY: ${{ inputs.pull-request-body }}
         SCORING_VERSION: ${{ inputs.scoring-version }}
       run: |
         read -ra files <<< "$FILES"
@@ -118,6 +139,25 @@ runs:
                 "${RUNNER_TEMP}/slop-chop" score --max "$MAX" "${args[@]}" "$f" || rc=1
               done
             fi
+            if [ "$PULL_REQUEST" = "true" ]; then
+              if [ -z "$PR_TITLE" ] && [ -z "$PR_BODY" ]; then
+                echo "slop-chop: no pull request title or body to check"
+              else
+                # The title is line 1 and the body starts on line 3. The text comes in
+                # through env and is only ever piped, never expanded into a command.
+                text="$(printf '%s\n\n%s\n' "$PR_TITLE" "$PR_BODY")"
+                echo "::group::slop-chop check pull request title and body"
+                if [ "$STRICT" = "true" ]; then
+                  printf '%s\n' "$text" | "${RUNNER_TEMP}/slop-chop" check "${args[@]}" || rc=1
+                else
+                  printf '%s\n' "$text" | "${RUNNER_TEMP}/slop-chop" check "${args[@]}" || true
+                fi
+                if [ -n "$MAX" ]; then
+                  printf '%s\n' "$text" | "${RUNNER_TEMP}/slop-chop" score --max "$MAX" "${args[@]}" || rc=1
+                fi
+                echo "::endgroup::"
+              fi
+            fi
             if [ -n "$SARIF" ]; then
               sarif_rc=0
               "${RUNNER_TEMP}/slop-chop" check --sarif "${args[@]}" "${files[@]}" > "$SARIF" || sarif_rc=$?
@@ -135,6 +175,10 @@ runs:
             exit "$rc"
             ;;
           fix)
+            if [ "$PULL_REQUEST" = "true" ]; then
+              echo "slop-chop: pull-request works in check mode only" >&2
+              exit 2
+            fi
             for f in "${files[@]}"; do
               echo "::group::slop-chop fix $f"
               "${RUNNER_TEMP}/slop-chop" fix "${args[@]}" -w "$f"
