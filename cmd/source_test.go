@@ -117,6 +117,37 @@ func TestCheckSourceColumns(t *testing.T) {
 	}
 }
 
+// TestAttackWriteSkipsSource checks that attack -w leaves a source file byte for byte
+// intact, while attack without -w still reports on its comments. The attack reads a source
+// file as its comment mask, so writing the result once blanked every line of code.
+func TestAttackWriteSkipsSource(t *testing.T) {
+	src := "package main\n\n// We delve into a robust plan.\nfunc F() int { return 42 }\n"
+	goFile := writeTemp(t, t.TempDir(), "main.go", src)
+
+	_, stderr, err := runCLI(t, []string{"attack", "-w", goFile}, "")
+	if err != nil {
+		t.Fatalf("attack -w err = %v, want nil with the file skipped", err)
+	}
+	if !strings.Contains(stderr, "skipping "+goFile) {
+		t.Errorf("stderr = %q, want a skip warning for %q", stderr, goFile)
+	}
+	got, err := os.ReadFile(filepath.Clean(goFile))
+	if err != nil {
+		t.Fatalf("read back: %v", err)
+	}
+	if string(got) != src {
+		t.Errorf("attack -w changed a source file:\n got %q\nwant %q", got, src)
+	}
+
+	stdout, _, err := runCLI(t, []string{"attack", goFile}, "")
+	if err != nil {
+		t.Fatalf("attack err = %v, want nil", err)
+	}
+	if !strings.Contains(stdout, "word:delve") {
+		t.Errorf("stdout = %q, want the comment's tells in the report", stdout)
+	}
+}
+
 // TestCheckSkipsDataFile checks that a file type with no comments still skips with a
 // warning.
 func TestCheckSkipsDataFile(t *testing.T) {
