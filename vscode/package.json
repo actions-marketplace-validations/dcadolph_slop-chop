@@ -2,7 +2,7 @@
   "name": "slop-chop",
   "displayName": "slop-chop",
   "description": "Flag and chop AI writing tells in Markdown, text, commit messages, and code comments as you write. Runs the local slop-chop binary; your text never leaves your machine.",
-  "version": "0.49.0",
+  "version": "0.50.0",
   "publisher": "dcadolph",
   "license": "MIT",
   "icon": "icon.png",
