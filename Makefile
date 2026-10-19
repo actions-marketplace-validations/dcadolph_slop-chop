@@ -109,6 +109,7 @@ mcpb:
 		GOOS=$$os GOARCH=$$arch $(GO) build -trimpath \
 			-ldflags "-s -w -X $(MODULE)/cmd.version=$(MCPB_VERSION)" \
 			-o $$work/server/$$bin .; \
+		cp docs/assets/icon-512.png $$work/icon.png; \
 		printf '%s\n' \
 			'{' \
 			'  "manifest_version": "0.3",' \
@@ -120,6 +121,7 @@ mcpb:
 			'  "homepage": "https://slop-chop.com",' \
 			'  "documentation": "https://github.com/dcadolph/slop-chop/blob/main/docs/MCP.md",' \
 			'  "license": "MIT",' \
+			'  "icon": "icon.png",' \
 			'  "server": {' \
 			'    "type": "binary",' \
 			"    \"entry_point\": \"server/$$bin\"," \
@@ -130,7 +132,7 @@ mcpb:
 			'    }' \
 			'  }' \
 			'}' > $$work/manifest.json; \
-		( cd $$work && zip -qr "../../../dist/slop-chop-mcp_$(MCPB_VERSION)_$${os}_$${arch}.mcpb" manifest.json server ); \
+		( cd $$work && zip -qr "../../../dist/slop-chop-mcp_$(MCPB_VERSION)_$${os}_$${arch}.mcpb" manifest.json icon.png server ); \
 	done; \
 	echo "built $$(ls dist/*.mcpb | wc -l | tr -d ' ') bundle(s) in dist/"
 
@@ -155,6 +157,10 @@ server-json:
 		printf '  "description": "Find and remove the writing patterns a profile lists. Deterministic rules, model rewrite opt-in.",\n'; \
 		printf '  "repository": { "url": "https://github.com/dcadolph/slop-chop", "source": "github" },\n'; \
 		printf '  "websiteUrl": "https://slop-chop.com",\n'; \
+		printf '%s\n' '  "icons": [' \
+			'    { "src": "https://slop-chop.com/assets/icon.png", "mimeType": "image/png", "sizes": ["256x256"] },' \
+			'    { "src": "https://slop-chop.com/assets/icon-512.png", "mimeType": "image/png", "sizes": ["512x512"] }' \
+			'  ],'; \
 		printf '  "version": "%s",\n' "$$ver"; \
 		printf '  "packages": [\n'; \
 		first=1; \

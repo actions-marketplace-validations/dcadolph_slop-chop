@@ -5,6 +5,10 @@
   "description": "Find and remove the writing patterns a profile lists. Deterministic rules, model rewrite opt-in.",
   "repository": { "url": "https://github.com/dcadolph/slop-chop", "source": "github" },
   "websiteUrl": "https://slop-chop.com",
+  "icons": [
+    { "src": "https://slop-chop.com/assets/icon.png", "mimeType": "image/png", "sizes": ["256x256"] },
+    { "src": "https://slop-chop.com/assets/icon-512.png", "mimeType": "image/png", "sizes": ["512x512"] }
+  ],
   "version": "0.49.0",
   "packages": [
     {
