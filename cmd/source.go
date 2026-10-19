@@ -24,15 +24,22 @@ func readProse(path string, stdin io.Reader, stderr io.Writer) (text string, ok 
 	if err != nil {
 		return "", false, err
 	}
+	text, ok = maskProse(path, text, stderr)
+	return text, ok, nil
+}
+
+// maskProse returns raw, the content of path, ready for the prose rules, the way
+// readProse does. It is for a caller that keeps raw to report positions in the original.
+func maskProse(path, raw string, stderr io.Writer) (string, bool) {
 	if path == "" || !source.Is(path) {
-		return text, true, nil
+		return raw, true
 	}
-	masked, scannable := source.Mask(path, text)
+	masked, scannable := source.Mask(path, raw)
 	if !scannable {
 		warnSourceSkip(stderr, path)
-		return "", false, nil
+		return "", false
 	}
-	return masked, true, nil
+	return masked, true
 }
 
 // maskStdin returns text read as a source file of the type --as names, so check and score
