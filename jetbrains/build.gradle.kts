@@ -1,3 +1,5 @@
+import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+
 plugins {
     id("java")
     id("org.jetbrains.kotlin.jvm") version "2.0.21"
@@ -15,11 +17,16 @@ repositories {
 }
 
 dependencies {
+    // The platform test case runs on JUnit 4 under Gradle's test task. The platform's
+    // assertions throw opentest4j failures, so that jar must be on the test classpath too.
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.opentest4j:opentest4j:1.3.0")
     intellijPlatform {
         create("IC", "2024.2")
         // LSP4IJ provides the language-client plumbing this plugin registers a server with.
         plugin("com.redhat.devtools.lsp4ij", "0.7.0")
         instrumentationTools()
+        testFramework(TestFrameworkType.Platform)
     }
 }
 
@@ -31,8 +38,9 @@ intellijPlatform {
         }
         changeNotes = """
             <ul>
-              <li>Add the slop-chop plugin logo.</li>
-              <li>Support every IDE build from 2024.2 onward, not just 2024.2.</li>
+              <li>Check source files: comments are read in Go, Python, TypeScript, and the other
+                  languages the command line reads.</li>
+              <li>Offer a quick fix per tell in source files.</li>
             </ul>
         """.trimIndent()
     }

@@ -21,10 +21,11 @@ picked up on its own.
 
 Install the slop-chop plugin from the JetBrains Marketplace: in IntelliJ IDEA, PyCharm,
 WebStorm, and the rest, open Settings, Plugins, Marketplace, and search **slop-chop**. It wires
-the language server for you, launching `slop-chop lsp` over Markdown and plain text, so tells
-show as inspections and a code action chops the file. You still need the `slop-chop` binary on
-your PATH. To wire it by hand instead, install the LSP4IJ plugin and register a server that runs
-`slop-chop lsp`.
+the language server for you, launching `slop-chop lsp` over Markdown, plain text, and source
+files. In a source file it reads only comments (and Python docstrings) and offers a quick fix per
+tell instead of a whole-file chop. Tells show as inspections. You still need the `slop-chop`
+binary on your PATH. To wire it by hand instead, install the LSP4IJ plugin and register a
+server that runs `slop-chop lsp`.
 
 ## Neovim
 
