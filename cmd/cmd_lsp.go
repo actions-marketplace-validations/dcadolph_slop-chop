@@ -14,8 +14,9 @@ func lspCmd() *cobra.Command {
 		Short: "Run as a Language Server over stdio.",
 		Long: `lsp speaks the Language Server Protocol on stdin and stdout, so an editor can flag
 and chop slop as you write. Tells become diagnostics, and the fix pass is offered as a
-"Chop the slop" code action and as document formatting. It uses the same profile, presets,
-and voice as the other commands.`,
+"Chop the slop" code action and as document formatting. A source file is read as its
+comments, and each rewrite there is a quick fix of its own, with no chop or formatting that
+would touch the code. It uses the same profile, presets, and voice as the other commands.`,
 		Args: cobra.NoArgs,
 		RunE: runLSP,
 	}

@@ -54,10 +54,13 @@ type sentSpan struct {
 // never rewritten: collapsing a drumbeat is a judgment call the author makes.
 func anaphoraFindings(text string, protected [][2]int) []Finding {
 	spans := sentenceSpans(text)
-	// A markdown table is not prose. Its rows open alike by construction, which is
-	// alignment rather than a drumbeat, so they neither seed a run nor extend one.
+	// A markdown table is not prose, and neither is a list or a run of HTML rows. Their
+	// lines open alike by construction, which is alignment rather than a drumbeat, so a
+	// sentence starting on one neither seeds a run nor extends one. The line decides, not
+	// the sentence, since the dot in "mtproto.py" or "epoch_19.jpg" ends a sentence partway
+	// through an item.
 	for i := range spans {
-		if inTableRow(text, spans[i].start) {
+		if inTableRow(text, spans[i].start) || inListOrMarkupLine(text, spans[i].start) {
 			spans[i].key = ""
 		}
 	}
@@ -156,6 +159,42 @@ func anaphoraKey(sentence string) string {
 		return ""
 	}
 	return strings.ToLower(first + " " + second)
+}
+
+// inListOrMarkupLine reports whether offset sits on a line that opens with a list marker
+// or an HTML tag, after any indentation.
+func inListOrMarkupLine(text string, offset int) bool {
+	i := lineStart(text, offset)
+	for i < len(text) && (text[i] == ' ' || text[i] == '\t') {
+		i++
+	}
+	j := i
+	for j < len(text) && text[j] != ' ' && text[j] != '\t' && text[j] != '\n' && text[j] != '\r' {
+		j++
+	}
+	return isListMarker(text[i:j]) || strings.HasPrefix(text[i:j], "<")
+}
+
+// isListMarker reports whether field is a markdown list marker: a dash, star, plus, the
+// "#." auto-number, or ASCII digits followed by one period or closing parenthesis.
+func isListMarker(field string) bool {
+	switch field {
+	case "-", "*", "+", "#.":
+		return true
+	}
+	if len(field) < 2 {
+		return false
+	}
+	last := field[len(field)-1]
+	if last != '.' && last != ')' {
+		return false
+	}
+	for _, c := range field[:len(field)-1] {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 // holdsDirective reports whether run holds a C preprocessor line. A stack of #include

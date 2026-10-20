@@ -1,6 +1,10 @@
 package sanitize
 
-import "strings"
+import (
+	"strings"
+	"unicode"
+	"unicode/utf8"
+)
 
 // The em-dash swap, the rule that has to read context before it fires: a dash pair around
 // an aside is not the dash splicing two clauses, and neither is a dateline.
@@ -110,7 +114,11 @@ func lineEnd(text string, i int) int {
 // conventions keep their dash: interrupted speech, where the dash is pressed against a
 // closing quote; a wire-service dateline, the all-caps opener before the first dash of
 // the line; and a transcript speaker line, which renders false starts as spaced dashes.
+// A dash that is not English punctuation at all, per notEnglishDash, is never swapped.
 func emDashKeep(text string, start, end int) bool {
+	if notEnglishDash(text, start, end) {
+		return false
+	}
 	if end < len(text) {
 		switch text[end] {
 		case '"', '\'':
@@ -140,4 +148,39 @@ func capsPrefixLine(prefix string) bool {
 		}
 	}
 	return caps >= 2
+}
+
+// cjkWindow is how many bytes on each side of a dash, within its line, the CJK check
+// reads. Reading the whole line made a long one-line paste quadratic in its dashes.
+const cjkWindow = 64
+
+// notEnglishDash reports whether the em-dash at text[start:end] belongs to another
+// convention: one of a doubled pair, which is the Chinese and Japanese dash; one between
+// two digits, a range like "553—561"; or one with CJK text beside it on its line, where a
+// comma swap would put Latin punctuation inside a CJK sentence.
+func notEnglishDash(text string, start, end int) bool {
+	if strings.HasSuffix(text[:start], emDash) || strings.HasPrefix(text[end:], emDash) {
+		return true
+	}
+	if start > 0 && end < len(text) && '0' <= text[start-1] && text[start-1] <= '9' &&
+		'0' <= text[end] && text[end] <= '9' {
+		return true
+	}
+	lo := max(0, start-cjkWindow)
+	if n := strings.LastIndexByte(text[lo:start], '\n'); n >= 0 {
+		lo += n + 1
+	}
+	for lo < start && !utf8.RuneStart(text[lo]) {
+		lo++
+	}
+	hi := min(len(text), end+cjkWindow)
+	if n := strings.IndexByte(text[end:hi], '\n'); n >= 0 {
+		hi = end + n
+	}
+	for _, r := range text[lo:hi] {
+		if unicode.In(r, unicode.Han, unicode.Hiragana, unicode.Katakana, unicode.Hangul) {
+			return true
+		}
+	}
+	return false
 }

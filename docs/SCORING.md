@@ -57,10 +57,11 @@ version 2 are two different statements about the text.
 
 ## What moved
 
-| Version | Release | What moved                                                                                                                                        |
-|---------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------|
-| 2       | v0.49.0 | Three standard library false positives: a sentence restated word for word, #include lines in a comment, and Greek math symbols.                   |
-| 1       | v0.48.0 | The first stamped version. It scores exactly as v0.47.0 did, which the benchmark corpus confirms: none of its 153 passages moves between the two. |
+| Version | Release | What moved                                                                                                                                                                                                                                                                                      |
+|---------|---------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 3       | v0.52.0 | Four guards for text that is not an English sentence: anaphora on list items and HTML rows, template stems on colon lead-ins and list items, the idiom `may or may not` and the month May in hedge stacks, and em dashes doubled, between digits, or on a CJK line. No benchmark passage moves. |
+| 2       | v0.49.0 | Three standard library false positives: a sentence restated word for word, #include lines in a comment, and Greek math symbols.                                                                                                                                                                 |
+| 1       | v0.48.0 | The first stamped version. It scores exactly as v0.47.0 did, which the benchmark corpus confirms: none of its 153 passages moves between the two.                                                                                                                                               |
 
 ### Before the stamp
 

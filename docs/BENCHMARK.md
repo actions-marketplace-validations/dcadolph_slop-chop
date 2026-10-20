@@ -140,12 +140,18 @@ was written before a general writing model existed.
 | Ecosystems | 7 | 7 |
 | Median prose | 369 words | 573 words |
 | Median score | 1 | 4 |
-| p90 / p99 | 13 / 22 | 15 / 26 |
+| p90 / p99 | 12 / 22 | 14 / 26 |
 | Worst sample | 35 | 36 |
 | **Scoring 25 or higher** | **4** | **3** |
+| Failing `check` | 224 | 144 |
 
 886 documents across Go, Python, Rust, JavaScript, Java, Ruby, and C++, of which seven
-reach the reads-clean line: 0.8 percent. The maintained column read three until the
+reach the reads-clean line: 0.8 percent. That line is the score gate the GitHub Action
+applies by default. `check` asks a stricter question. It fails a file on any finding that
+carries score weight, a single `ensure` included, and 368 of the 886 fail it: 41.5 percent.
+The first number is how often human prose crosses the line. The second is how often it uses
+at least one listed tell somewhere, which is what a strict linter reports, and the two are
+quoted together so neither is mistaken for the other. The maintained column read three until the
 participle tail signal of 2026-10-05 moved one document from 24 to 25, which the recheck
 that day missed because it ran the abandoned column only. It reads three again since
 v0.49.0, which stopped reading a Greek mu as a Latin lookalike: the protocolbuffers/protobuf
@@ -167,7 +173,25 @@ one, so the sample is smaller than the draw that reported zero.
 
 The rules that do fire on human prose are worth naming: `word:ensure` leads at seven
 percent of documents, then `word:powerful` and curly quotes at six, then
-`structural:bold-bullet-run` and `structural:template-stem`. Nothing reaches eight percent.
+`structural:bold-bullet-run` and `phrase:additionally,`. Nothing reaches eight percent.
+
+Scoring version 3 added four guards for text that is not an English sentence, listed in
+[the scoring history](SCORING.md#what-moved): list items, HTML rows, colon lead-ins, the
+hedge idiom `may or may not`, the month May, and em dashes that belong to CJK text or a
+range. They were found by reading where the rules fired in the abandoned column. They moved
+no document across the line in either column, lowered p90 by one point in each, and took
+the `check` failures from 389 to 368, 43.9 to 41.5 percent. Most of what they free is short
+or non-English text the prose filter already sets aside, which is why the column moves less
+than the raw files do.
+
+A column that shaped a fix cannot also confirm it, so the fix was checked on a held-out
+draw. On 2026-10-19 the collector gathered 1600 more READMEs under the same no-push-since-2021
+rule, and the 835 from repositories in neither column became the held-out set, 567 of them
+passing the prose and language filter. Before the guards, 2 of the 567 reach 25 (0.4
+percent) and 232 fail `check` (40.9 percent). After them, 2 reach 25 and 229 fail `check`
+(40.4 percent). The guards move less on new prose than on the column they were read from,
+which is the expected direction for a fix tuned on one sample, and nothing moved the wrong
+way.
 The character rules dominate the raw counts and contribute nothing to the score, which is
 the separation between a finding and a score weight doing its job on writing it has never
 seen.

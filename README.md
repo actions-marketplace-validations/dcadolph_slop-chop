@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://slop-chop.com"><img src="https://img.shields.io/badge/try_it-slop--chop.com-9bcf1a" alt="Try it at slop-chop.com"></a>
-  <a href="https://github.com/dcadolph/slop-chop/releases/latest"><img src="https://img.shields.io/badge/release-v0.51.0-9bcf1a" alt="Latest release"></a>
+  <a href="https://github.com/dcadolph/slop-chop/releases/latest"><img src="https://img.shields.io/badge/release-v0.53.0-9bcf1a" alt="Latest release"></a>
   <a href="https://github.com/dcadolph/slop-chop/actions/workflows/ci.yml"><img src="https://github.com/dcadolph/slop-chop/actions/workflows/ci.yml/badge.svg" alt="ci status"></a>
   <a href="https://pkg.go.dev/github.com/dcadolph/slop-chop/sanitize"><img src="https://pkg.go.dev/badge/github.com/dcadolph/slop-chop/sanitize.svg" alt="Go reference"></a>
 </p>
@@ -81,7 +81,9 @@ has the method and the caveats.
 
 It stays quiet on human writing. Scored against 886 open-source READMEs across seven
 language ecosystems, most from projects with no push since 2021, seven reach the line where
-text stops reading clean. That is 0.8 percent.
+text stops reading clean. That is 0.8 percent, and it is the line the GitHub Action fails on
+by default. `slop-chop check` is stricter. It fails a file on any single tell that carries
+weight, and 41.5 percent of the same READMEs use at least one.
 
 Word lists lose to a thesaurus. `slop-chop attack` swaps text to dodge the rules without
 improving it, and 33 of 74 word tells slip past. Only 1 of 90 structural tells does, which
@@ -157,8 +159,9 @@ generated paragraphs buried in a thousand human words shows where they are, and 
 then gates on the hottest paragraph instead of the diluted whole.
 
 Source code gets its own treatment. On a `.go`, `.py`, `.ts`, or any other code file,
-`check` and `score` read only the comments, so a buzzword in a comment is flagged at its
-real line and column while identifiers, strings, and formatting alignment draw nothing.
+`check` and `score` read only the comments, plus the docstrings in a Python file, so a
+buzzword in a comment is flagged at its real line and column while identifiers, strings, and
+formatting alignment draw nothing.
 `fix` refuses to rewrite code files outright, since prose cleanups break code. Pipe a
 file through stdin to read it as plain text on purpose, or add `--as .go` to read stdin as
 a source file of that type and scan only its comments, which is how an editor checks an
@@ -226,7 +229,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dcadolph/slop-chop@v0.51.0
+      - uses: dcadolph/slop-chop@v0.53.0
         with:
           files: docs/intro.md docs/guide.md
           # max: 25                   # optional, the score line
@@ -283,7 +286,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.head_ref }}
-      - uses: dcadolph/slop-chop@v0.51.0
+      - uses: dcadolph/slop-chop@v0.53.0
         with:
           files: docs/intro.md docs/guide.md
           mode: fix
@@ -311,7 +314,7 @@ jobs:
       security-events: write
     steps:
       - uses: actions/checkout@v4
-      - uses: dcadolph/slop-chop@v0.51.0
+      - uses: dcadolph/slop-chop@v0.53.0
         with:
           files: docs/intro.md docs/guide.md
           sarif: slop-chop.sarif
@@ -345,7 +348,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dcadolph/slop-chop@v0.51.0
+      - uses: dcadolph/slop-chop@v0.53.0
         with:
           pull-request: "true"
 ```
