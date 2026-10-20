@@ -21,8 +21,8 @@ file.
 
 **slop-chop: Chop the slop** on a source file applies every fixable tell inside its comments
 as one undoable edit and leaves the rest of the file alone. Tells with no safe swap stay as
-diagnostics for you to rewrite. Python docstrings are strings, not comments, so they are not
-scanned yet.
+diagnostics for you to rewrite. Python docstrings are read as prose like comments, while other
+triple-quoted strings stay code.
 
 ## Install
 

@@ -159,8 +159,9 @@ generated paragraphs buried in a thousand human words shows where they are, and 
 then gates on the hottest paragraph instead of the diluted whole.
 
 Source code gets its own treatment. On a `.go`, `.py`, `.ts`, or any other code file,
-`check` and `score` read only the comments, so a buzzword in a comment is flagged at its
-real line and column while identifiers, strings, and formatting alignment draw nothing.
+`check` and `score` read only the comments, plus the docstrings in a Python file, so a
+buzzword in a comment is flagged at its real line and column while identifiers, strings, and
+formatting alignment draw nothing.
 `fix` refuses to rewrite code files outright, since prose cleanups break code. Pipe a
 file through stdin to read it as plain text on purpose, or add `--as .go` to read stdin as
 a source file of that type and scan only its comments, which is how an editor checks an
