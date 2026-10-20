@@ -25,6 +25,8 @@ const (
 	// sarifMatchRunes caps how much of a match a result message quotes, since a structural
 	// walker can match whole paragraphs.
 	sarifMatchRunes = 80
+	// sarifNameMax is the longest rule name GitHub accepts, in bytes.
+	sarifNameMax = 255
 )
 
 // sarifClassTitles names each rule class for the short description of its rules.
@@ -87,6 +89,8 @@ type sarifDriver struct {
 type sarifRule struct {
 	// ID is the engine's rule name, the same string --json prints and scoreWeights takes.
 	ID string `json:"id"`
+	// Name is the Pascal-case friendly name GitHub shows when filtering alerts by rule.
+	Name string `json:"name"`
 	// ShortDescription is a readable title.
 	ShortDescription sarifText `json:"shortDescription"`
 	// FullDescription says why the rule fires.
@@ -258,6 +262,7 @@ func sarifRuleFor(s *sanitize.Sanitizer, id string, walkers map[string]string) s
 	}
 	return sarifRule{
 		ID:                   id,
+		Name:                 sarifName(class, name),
 		ShortDescription:     sarifText{Text: sarifTitle(class, name)},
 		FullDescription:      sarifText{Text: reason},
 		Help:                 sarifText{Text: help, Markdown: md},
@@ -278,6 +283,71 @@ func sarifTitle(class, name string) string {
 		name = codePoints(name)
 	}
 	return title + ": " + name
+}
+
+// sarifName builds the single Pascal-case identifier GitHub shows for a rule. It always matches
+// ^(\p{Lu}[\p{Ll}\p{Nd}]+)+$ and never exceeds sarifNameMax bytes.
+func sarifName(class, name string) string {
+	title, ok := sarifClassTitles[class]
+	if !ok {
+		title = "Rule"
+	}
+	var b strings.Builder
+	sarifPascal(&b, title, false)
+	sarifPascal(&b, name, class == "char")
+	return sarifClip(b.String())
+}
+
+// sarifPascal appends s to b as Pascal-case segments. With spellAll, every rune is spelled as
+// U plus lowercase hex. Otherwise apostrophes are dropped, words split on every rune that is
+// not a letter or digit, and runes that do not lowercase to a letter or digit are spelled.
+func sarifPascal(b *strings.Builder, s string, spellAll bool) {
+	if spellAll {
+		for _, r := range s {
+			fmt.Fprintf(b, "U%04x", r)
+		}
+		return
+	}
+	s = strings.NewReplacer("'", "", "\u2019", "").Replace(s)
+	words := strings.FieldsFunc(s, func(r rune) bool {
+		return !unicode.IsLetter(r) && !unicode.IsDigit(r)
+	})
+	for _, word := range words {
+		var w strings.Builder
+		for _, r := range word {
+			l := unicode.ToLower(r)
+			if unicode.IsLower(l) || unicode.IsDigit(l) {
+				w.WriteRune(l)
+			} else {
+				fmt.Fprintf(&w, "U%04x", r)
+			}
+		}
+		out := w.String()
+		first, size := utf8.DecodeRuneInString(out)
+		next, _ := utf8.DecodeRuneInString(out[size:])
+		up := unicode.ToUpper(first)
+		if first != 'U' && unicode.IsUpper(up) && (unicode.IsLower(next) || unicode.IsDigit(next)) {
+			out = string(up) + out[size:]
+		}
+		b.WriteString(out)
+	}
+}
+
+// sarifClip cuts s to sarifNameMax bytes on a rune boundary, then drops a trailing uppercase
+// rune so no segment ends as a lone capital.
+func sarifClip(s string) string {
+	if len(s) <= sarifNameMax {
+		return s
+	}
+	cut := sarifNameMax
+	for cut > 0 && !utf8.RuneStart(s[cut]) {
+		cut--
+	}
+	s = s[:cut]
+	if r, size := utf8.DecodeLastRuneInString(s); unicode.IsUpper(r) {
+		s = s[:len(s)-size]
+	}
+	return s
 }
 
 // codePoints spells each rune of s as U+XXXX, followed by the rune itself when it prints.
