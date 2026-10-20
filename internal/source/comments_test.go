@@ -31,11 +31,11 @@ func TestMask(t *testing.T) {
 		In:       "/* first line\nsecond line */ int x;\n",
 		WantKeep: []string{"first line", "second line"},
 		WantDrop: []string{"int x", "/*", "*/"},
-	}, { // Test 3: Python hash comment kept, triple-quoted docstring dropped.
+	}, { // Test 3: Python hash comment kept, assigned triple-quoted string dropped.
 		Path:     "a.py",
-		In:       "\"\"\"a # docstring\"\"\"\nx = 1  # trailing note\n",
+		In:       "s = \"\"\"a # string\"\"\"\nx = 1  # trailing note\n",
 		WantKeep: []string{"trailing note"},
-		WantDrop: []string{"docstring", "x = 1"},
+		WantDrop: []string{"a # string", "x = 1"},
 	}, { // Test 4: A Rust lifetime apostrophe does not swallow the comment.
 		Path:     "a.rs",
 		In:       "fn f<'a>(x: &'a str) {} // lifetime note\n",
@@ -109,31 +109,7 @@ func TestMask(t *testing.T) {
 	for testNum, test := range tests {
 		t.Run(fmt.Sprintf("test %d", testNum), func(t *testing.T) {
 			t.Parallel()
-			got, ok := Mask(test.Path, test.In)
-			if !ok {
-				t.Fatalf("Mask(%q) not scannable, want ok", test.Path)
-			}
-			if len(got) != len(test.In) {
-				t.Fatalf("mask changed length: %d != %d", len(got), len(test.In))
-			}
-			if strings.Count(got, "\n") != strings.Count(test.In, "\n") {
-				t.Fatalf("mask changed line count")
-			}
-			for _, want := range test.WantKeep {
-				at := strings.Index(test.In, want)
-				if at < 0 || !strings.Contains(got, want) {
-					t.Errorf("mask lost %q (%q)", want, got)
-					continue
-				}
-				if got[at:at+len(want)] != want {
-					t.Errorf("mask moved %q off its original offset (%q)", want, got)
-				}
-			}
-			for _, drop := range test.WantDrop {
-				if strings.Contains(got, drop) {
-					t.Errorf("mask kept %q, want it blanked (%q)", drop, got)
-				}
-			}
+			checkMask(t, test.Path, test.In, test.WantKeep, test.WantDrop)
 		})
 	}
 
@@ -173,6 +149,97 @@ func TestMaskKeepsIndentedCommentsReadable(t *testing.T) {
 		at := strings.Index(in, want)
 		if at < 0 || got[at:at+len(want)] != want {
 			t.Errorf("mask moved %q off its original offset (%q)", want, got)
+		}
+	}
+}
+
+// TestMaskPythonDocstrings checks that a docstring reads as prose with its quotes blanked,
+// while an assigned string, an argument string, and every other triple string stay code.
+func TestMaskPythonDocstrings(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		In       string
+		WantKeep []string
+		WantDrop []string
+	}{{ // Test 0: Module, class, and r-prefixed method docstrings read, the strings do not.
+		In: "#!/usr/bin/env python3\n" +
+			"\"\"\"Module docstring that will leverage the cache.\"\"\"\n\n" +
+			"import os\n\n\n" +
+			"class Store:\n" +
+			"    \"\"\"Class docstring with a robust design.\"\"\"\n\n" +
+			"    def load(self):\n" +
+			"        r\"\"\"Method docstring that is seamlessly fast.\"\"\"\n" +
+			"        x = \"\"\"assigned string holding powerful text\"\"\"\n" +
+			"        foo(\n" +
+			"            \"\"\"argument string holding crucial text\"\"\"\n" +
+			"        )\n" +
+			"        # a comment that will delve into it\n" +
+			"        return x\n",
+		WantKeep: []string{
+			"Module docstring that will leverage the cache.", "Class docstring with a robust design.",
+			"Method docstring that is seamlessly fast.", "a comment that will delve into it",
+		},
+		WantDrop: []string{`"""`, `r"""`, "assigned string", "argument string", "import os", "foo("},
+	}, { // Test 1: A single-quoted docstring spans lines under a def with a trailing comment.
+		In:       "def f():  # helper\n    '''First line.\n\n    Second line.\n    '''\n",
+		WantKeep: []string{"First line.", "Second line.", "helper"},
+		WantDrop: []string{"def f", "'''"},
+	}, { // Test 2: A '#' inside a string on the header line is not a comment.
+		In:       "def f(a=\"#\"):\n    \"\"\"Header docstring.\"\"\"\n",
+		WantKeep: []string{"Header docstring."},
+		WantDrop: []string{"def f"},
+	}, { // Test 3: Comment lines between the header and the docstring are passed over.
+		In:       "# -*- coding: utf-8 -*-\n# Copyright note\n\n\"\"\"Module text.\"\"\"\n",
+		WantKeep: []string{"Module text.", "Copyright note"},
+	}, { // Test 4: A bare string after a line of code stays a string.
+		In:       "x = 1\n\"\"\"not a docstring\"\"\"\n",
+		WantDrop: []string{"not a docstring"},
+	}, { // Test 5: f, b, and two-letter prefixes are never docstrings.
+		In:       "def f():\n    f\"\"\"formatted\"\"\"\ndef g():\n    rb\"\"\"raw bytes\"\"\"\n",
+		WantDrop: []string{"formatted", "raw bytes"},
+	}, { // Test 6: A CRLF header still ends with a colon.
+		In:       "class C:\r\n    u\"\"\"Windows docstring.\"\"\"\r\n",
+		WantKeep: []string{"Windows docstring."},
+		WantDrop: []string{"class C"},
+	}, { // Test 7: An unclosed docstring runs to the end of the text.
+		In:       "def f():\n    \"\"\"never closed\nstill prose\n",
+		WantKeep: []string{"never closed", "still prose"},
+	}}
+	for testNum, test := range tests {
+		t.Run(fmt.Sprintf("test %d", testNum), func(t *testing.T) {
+			t.Parallel()
+			checkMask(t, "a.py", test.In, test.WantKeep, test.WantDrop)
+		})
+	}
+}
+
+// checkMask masks in as path and checks that the mask keeps its length and line breaks, that
+// each of keep survives at its original offset, and that none of drop survives.
+func checkMask(t *testing.T, path, in string, keep, drop []string) {
+	t.Helper()
+	got, ok := Mask(path, in)
+	if !ok {
+		t.Fatalf("Mask(%q) not scannable, want ok", path)
+	}
+	if len(got) != len(in) {
+		t.Fatalf("mask changed length: %d != %d", len(got), len(in))
+	}
+	if strings.Count(got, "\n") != strings.Count(in, "\n") {
+		t.Fatalf("mask changed line count")
+	}
+	for _, want := range keep {
+		at := strings.Index(in, want)
+		if at < 0 || !strings.Contains(got, want) {
+			t.Errorf("mask lost %q (%q)", want, got)
+			continue
+		}
+		if got[at:at+len(want)] != want {
+			t.Errorf("mask moved %q off its original offset (%q)", want, got)
+		}
+	}
+	for _, d := range drop {
+		if strings.Contains(got, d) {
+			t.Errorf("mask kept %q, want it blanked (%q)", d, got)
 		}
 	}
 }
