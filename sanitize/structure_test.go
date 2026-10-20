@@ -288,3 +288,50 @@ func TestEmDashPairRespectsTypography(t *testing.T) {
 		t.Errorf("Fix(%q) = %q, want it left alone", in, got)
 	}
 }
+
+// TestEmDashNotEnglish checks that a doubled dash, a dash between digits, and a dash on a
+// CJK line are neither reported nor swapped, while an English dash is both.
+func TestEmDashNotEnglish(t *testing.T) {
+	t.Parallel()
+	s, err := New(DefaultProfile())
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	tests := []struct {
+		In        string
+		WantFix   string
+		WantCount int
+	}{{ // Test 0: An English dash is reported and swapped.
+		In: "It worked—until it did not.", WantFix: "It worked, until it did not.", WantCount: 1,
+	}, { // Test 1: A doubled dash in Chinese is left alone.
+		In: "中文——说明。", WantFix: "中文——说明。", WantCount: 0,
+	}, { // Test 2: A doubled dash in Latin text is still the CJK convention, not a splice.
+		In: "Wait——what?", WantFix: "Wait——what?", WantCount: 0,
+	}, { // Test 3: A page range keeps its dash.
+		In: "See pp. 553—561.", WantFix: "See pp. 553—561.", WantCount: 0,
+	}, { // Test 4: A single dash on a line holding Japanese is left alone.
+		In: "設定—詳細は下記", WantFix: "設定—詳細は下記", WantCount: 0,
+	}, { // Test 5: A dash on a line holding Korean is left alone.
+		In: "Read the 안내—then run it.", WantFix: "Read the 안내—then run it.", WantCount: 0,
+	}, { // Test 6: The CJK guard reads only its own line.
+		In: "中文\nIt worked—until it did not.", WantFix: "中文\nIt worked, until it did not.", WantCount: 1,
+	}}
+	for testNum, test := range tests {
+		t.Run(fmt.Sprintf("test %d", testNum), func(t *testing.T) {
+			t.Parallel()
+			count := 0
+			for _, f := range s.Check(test.In) {
+				if f.Rule == "char:"+emDash {
+					count++
+				}
+			}
+			if count != test.WantCount {
+				t.Errorf("Check(%q) reported %d em-dash findings, want %d", test.In, count, test.WantCount)
+			}
+			got, _ := s.Fix(test.In)
+			if diff := cmp.Diff(test.WantFix, got); diff != "" {
+				t.Errorf("Fix(%q) mismatch (-want +got):\n%s", test.In, diff)
+			}
+		})
+	}
+}

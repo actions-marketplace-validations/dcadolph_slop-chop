@@ -35,6 +35,18 @@ func TestTemplateStem(t *testing.T) {
 		Name: "one odd tail", WantHit: true,
 		In: "Our team cares about retries today.\n\nOur team cares about retries today.\n\n" +
 			"Our team cares about backoff today.",
+	}, { // Test 4: Colon lead-ins sharing a stem introduce lists and are not a template.
+		Name: "colon lead-ins", WantHit: false,
+		In: "To run the app locally:\n\nTo run the app in Docker:\n\n" +
+			"To run the app with Make:",
+	}, { // Test 5: List items sharing a stem after the marker are not a template.
+		Name: "list items", WantHit: false,
+		In: "- Can parse the header and the body.\n\n- Can parse the footer and the index.\n\n" +
+			"- Can parse the trailer and the map.",
+	}, { // Test 6: Plain paragraphs opening alike still fire.
+		Name: "plain paragraph openers", WantHit: true,
+		In: "The cache layer stores retries safely.\n\nThe cache layer stores timeouts safely.\n\n" +
+			"The cache layer stores backoff safely.",
 	}}
 	for testNum, test := range tests {
 		t.Run(fmt.Sprintf("test %d %s", testNum, test.Name), func(t *testing.T) {

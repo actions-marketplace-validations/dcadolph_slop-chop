@@ -330,8 +330,45 @@ const wsGap = `(?:[ \t]+(?:\r?\n[ \t]*)?|\r?\n[ \t]*)`
 //
 //nolint:gochecknoglobals // Immutable lookup.
 var flagPatternKeeps = map[string]func(text string, start, end int) bool{
+	"hedge-stack":     hedgesStack,
 	"its-not-x-its-y": notXRepeated,
 	"triad-fragment":  triadVaries,
+}
+
+// hedgesStack keeps a hedge-stack match only when it stacks two real hedges. "May or may
+// not" repeats one hedge across "or" as an idiom, and "May 10th" is the month, so neither
+// counts. The match opens and closes on a hedge word, all ASCII letters.
+func hedgesStack(text string, start, end int) bool {
+	first := start
+	for first < end && isASCIILetter(text[first]) {
+		first++
+	}
+	last := end
+	for last > first && isASCIILetter(text[last-1]) {
+		last--
+	}
+	if strings.EqualFold(text[start:first], text[last:end]) && strings.Trim(text[first:last], " \t\r\n,") == "or" {
+		return false
+	}
+	return !monthBeforeDate(text, start, first) && !monthBeforeDate(text, last, end)
+}
+
+// monthBeforeDate reports whether text[start:end] is the capitalized month May followed by
+// whitespace and a digit, as in "May 10th".
+func monthBeforeDate(text string, start, end int) bool {
+	if text[start:end] != "May" {
+		return false
+	}
+	i := end
+	for i < len(text) && (text[i] == ' ' || text[i] == '\t' || text[i] == '\n' || text[i] == '\r') {
+		i++
+	}
+	return i > end && i < len(text) && text[i] >= '0' && text[i] <= '9'
+}
+
+// isASCIILetter reports whether c is an ASCII letter.
+func isASCIILetter(c byte) bool {
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
 }
 
 // triadVaries keeps a triad-fragment match only when its three items differ. "Location,

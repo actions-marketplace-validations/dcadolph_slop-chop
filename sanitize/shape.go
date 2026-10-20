@@ -132,6 +132,11 @@ type site struct {
 func templateStems(text string, paras []paraSpan, protected [][2]int) []Finding {
 	stems := map[string][]site{}
 	for pi, p := range paras {
+		// A paragraph ending in a colon is a lead-in to the code block or list below it,
+		// and "To run the app" before each one is a recipe, not a template.
+		if strings.HasSuffix(strings.TrimSpace(text[p.start:p.end]), ":") {
+			continue
+		}
 		// Only a paragraph's opening sentence counts. The outline tell is paragraphs
 		// stamped from one template; reference prose that repeats its subject
 		// mid-paragraph, "the fix flag does", is a document doing its job.
@@ -141,7 +146,7 @@ func templateStems(text string, paras []paraSpan, protected [][2]int) []Finding 
 		}
 		sp := spans[0]
 		words := strings.Fields(text[p.start+sp.start : p.start+sp.end])
-		if len(words) < stemWords+1 {
+		if len(words) < stemWords+1 || isListMarker(words[0]) {
 			continue
 		}
 		key := strings.ToLower(strings.Join(words[:stemWords], " "))
