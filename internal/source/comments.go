@@ -142,6 +142,9 @@ func nextToken(text string, out []byte, i int, style commentStyle) int {
 	}
 	switch c := text[i]; {
 	case style.triple && (strings.HasPrefix(text[i:], `"""`) || strings.HasPrefix(text[i:], "'''")):
+		if docstring(text, out, i) {
+			return copyUntil(text, out, i+3, text[i:i+3])
+		}
 		return skipString(text, i+3, text[i:i+3], false)
 	case c == '"':
 		return skipString(text, i+1, `"`, true)
@@ -156,6 +159,40 @@ func nextToken(text string, out []byte, i int, style commentStyle) int {
 		return skipTemplate(text, i+1)
 	}
 	return i + 1
+}
+
+// docstring reports whether the triple quote at i opens a Python docstring, which reads as
+// prose rather than as a string. The quotes must open their line, after at most a one-letter
+// r or u prefix, and the nearest earlier line of code must end with a colon, the header of a
+// def, class, or other block, or there must be no earlier code at all, as above a module
+// docstring under a shebang. Comment lines are passed over. Everything else, like an
+// assigned string or one passed as an argument, stays a string.
+func docstring(text string, out []byte, i int) bool {
+	start := strings.LastIndexByte(text[:i], '\n') + 1
+	lead := strings.TrimLeft(text[start:i], " \t")
+	if len(lead) > 1 || (lead != "" && !strings.ContainsAny(lead, "rRuU")) {
+		return false
+	}
+	for start > 0 {
+		end := start - 1
+		start = strings.LastIndexByte(text[:end], '\n') + 1
+		if code := strings.TrimSpace(codeOf(text, out, start, end)); code != "" {
+			return strings.HasSuffix(code, ":")
+		}
+	}
+	return true
+}
+
+// codeOf returns the line text[start:end] without its trailing comment. out holds the mask
+// so far, which tells a comment marker from a '#' inside a string: the mask copied
+// everything after a marker, and blanked the rest of a string.
+func codeOf(text string, out []byte, start, end int) string {
+	for p := start; p < end; p++ {
+		if text[p] == '#' && out[p] == ' ' && string(out[p+1:end]) == text[p+1:end] {
+			return text[start:p]
+		}
+	}
+	return text[start:end]
 }
 
 // copyUntil copies text into out from start until the closer, leaving the closer itself
