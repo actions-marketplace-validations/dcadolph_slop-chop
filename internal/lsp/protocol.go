@@ -1,7 +1,7 @@
 // Package lsp implements a small Language Server for slop-chop. It speaks the Language Server
 // Protocol over stdio with no third-party dependency: findings become diagnostics and the fix
 // pass becomes a formatting edit and a code action, so any LSP-aware editor can flag and chop
-// slop as you write.
+// slop as you write. A source file is read as its comments, with a quick fix per finding.
 package lsp
 
 import "encoding/json"
@@ -155,12 +155,17 @@ type workspaceEdit struct {
 	Changes map[string][]TextEdit `json:"changes"`
 }
 
-// codeAction is one offered action, here the chop of a whole document.
+// codeAction is one offered action: the chop of a whole prose document, or the fix of one
+// finding in a source document.
 type codeAction struct {
 	// Title is the label shown in the editor.
 	Title string `json:"title"`
 	// Kind is the LSP code-action kind.
 	Kind string `json:"kind"`
+	// Diagnostics lists the diagnostic a single-finding fix resolves, empty for the chop.
+	Diagnostics []Diagnostic `json:"diagnostics,omitempty"`
+	// IsPreferred marks a single-finding fix as the one to apply for its diagnostic.
+	IsPreferred bool `json:"isPreferred,omitempty"`
 	// Edit is the workspace edit the action applies.
 	Edit workspaceEdit `json:"edit"`
 }

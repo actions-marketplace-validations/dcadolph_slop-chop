@@ -6,12 +6,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"slices"
 	"strconv"
 	"strings"
 	"sync"
 	"unicode/utf8"
 
+	"github.com/dcadolph/slop-chop/internal/source"
 	"github.com/dcadolph/slop-chop/sanitize"
 )
 
@@ -24,7 +26,8 @@ const methodNotFound = -32601
 
 // Server is a Language Server that flags and chops slop. It reads framed JSON-RPC from r and
 // writes replies and diagnostics to w. It holds each open document's text so a chop can act on
-// the whole buffer.
+// the whole buffer. A source file is read as its comments, the way check reads one, and gets a
+// quick fix per finding instead of a chop.
 type Server struct {
 	// san is the configured rules engine.
 	san *sanitize.Sanitizer
@@ -142,7 +145,7 @@ func (srv *Server) handle(req request) bool {
 	case "textDocument/codeAction":
 		var p codeActionParams
 		_ = json.Unmarshal(req.Params, &p)
-		srv.reply(req.ID, srv.codeActions(p.TextDocument.URI))
+		srv.reply(req.ID, srv.codeActions(p.TextDocument.URI, p.Range))
 	case "textDocument/formatting":
 		var p documentFormattingParams
 		_ = json.Unmarshal(req.Params, &p)
@@ -161,24 +164,64 @@ func (srv *Server) handle(req request) bool {
 
 // publish runs the rules over a document and pushes its diagnostics.
 func (srv *Server) publish(uri string) {
-	text := srv.docs[uri]
-	findings := srv.san.Check(text)
+	text, findings := srv.findings(uri)
 	positions := offsetPositions(text, findings)
 	diags := make([]Diagnostic, 0, len(findings))
 	for _, f := range findings {
-		diags = append(diags, Diagnostic{
-			Range: Range{
-				Start: positions[f.Offset],
-				End:   positions[f.Offset+len(f.Match)],
-			},
-			Severity: severityInformation,
-			Source:   "slop-chop",
-			Code:     f.Rule,
-			Message:  diagMessage(f),
-		})
+		diags = append(diags, diagnostic(f, findingRange(f, positions)))
 	}
 	srv.notify("textDocument/publishDiagnostics",
 		publishDiagnosticsParams{URI: uri, Diagnostics: diags})
+}
+
+// findings returns a document's text and the findings to report on it. A source file is read
+// the way check reads one: the rules run on its comment mask, cleanups are dropped, and a type
+// with no comment syntax reports nothing. The mask keeps every byte offset, so the findings
+// place against the original text as they are.
+func (srv *Server) findings(uri string) (string, []sanitize.Finding) {
+	text := srv.docs[uri]
+	path := uriPath(uri)
+	if !source.Is(path) {
+		return text, srv.san.Check(text)
+	}
+	masked, ok := source.Mask(path, text)
+	if !ok {
+		return text, nil
+	}
+	return text, slices.DeleteFunc(srv.san.Check(masked), func(f sanitize.Finding) bool {
+		return sanitize.TidyRule(f.Rule)
+	})
+}
+
+// uriPath returns the file path a document URI names, so the server can tell source files
+// from prose. A file URI yields its decoded path and any other URI is used as it is.
+func uriPath(uri string) string {
+	if u, err := url.Parse(uri); err == nil && u.Scheme == "file" {
+		return u.Path
+	}
+	return uri
+}
+
+// isSource reports whether a document is source code, whose code a whole-document fix must
+// never touch.
+func isSource(uri string) bool {
+	return source.Is(uriPath(uri))
+}
+
+// diagnostic renders a finding as a diagnostic over its span.
+func diagnostic(f sanitize.Finding, span Range) Diagnostic {
+	return Diagnostic{
+		Range:    span,
+		Severity: severityInformation,
+		Source:   "slop-chop",
+		Code:     f.Rule,
+		Message:  diagMessage(f),
+	}
+}
+
+// findingRange returns the span of a finding from the positions offsetPositions mapped.
+func findingRange(f sanitize.Finding, positions map[int]Position) Range {
+	return Range{Start: positions[f.Offset], End: positions[f.Offset+len(f.Match)]}
 }
 
 // offsetPositions maps every byte offset the findings' ranges need to its LSP position in one
@@ -203,8 +246,13 @@ func offsetPositions(text string, findings []sanitize.Finding) map[int]Position 
 	return out
 }
 
-// codeActions offers a single whole-document chop when it would change anything.
-func (srv *Server) codeActions(uri string) []codeAction {
+// codeActions offers a single whole-document chop on a prose document when it would change
+// anything. A source document gets a quick fix per finding in rng instead, because the chop
+// would rewrite its code.
+func (srv *Server) codeActions(uri string, rng Range) []codeAction {
+	if isSource(uri) {
+		return srv.quickFixes(uri, rng)
+	}
 	edits := srv.formatEdits(uri)
 	if len(edits) == 0 {
 		return []codeAction{}
@@ -216,9 +264,56 @@ func (srv *Server) codeActions(uri string) []codeAction {
 	}}
 }
 
+// quickFixes returns one quick fix per finding with a replacement whose span touches rng, each
+// a single edit titled the way the VS Code extension titles it. A finding whose span does not
+// read as its match in the original, like a phrase the mask joined across a comment marker,
+// gets no fix, so a fix never rewrites code.
+func (srv *Server) quickFixes(uri string, rng Range) []codeAction {
+	text, findings := srv.findings(uri)
+	positions := offsetPositions(text, findings)
+	actions := []codeAction{}
+	for _, f := range findings {
+		if f.Replacement == nil || text[f.Offset:f.Offset+len(f.Match)] != f.Match {
+			continue
+		}
+		span := findingRange(f, positions)
+		if !touches(span, rng) {
+			continue
+		}
+		title := `slop-chop: change to "` + *f.Replacement + `"`
+		if *f.Replacement == "" {
+			title = "slop-chop: drop it"
+		}
+		actions = append(actions, codeAction{
+			Title:       title,
+			Kind:        "quickfix",
+			Diagnostics: []Diagnostic{diagnostic(f, span)},
+			IsPreferred: true,
+			Edit: workspaceEdit{Changes: map[string][]TextEdit{
+				uri: {{Range: span, NewText: *f.Replacement}},
+			}},
+		})
+	}
+	return actions
+}
+
+// touches reports whether span and rng overlap or meet, so a cursor resting at either end of a
+// finding still offers its fix.
+func touches(span, rng Range) bool {
+	return !before(span.End, rng.Start) && !before(rng.End, span.Start)
+}
+
+// before reports whether position a comes strictly before b.
+func before(a, b Position) bool {
+	return a.Line < b.Line || (a.Line == b.Line && a.Character < b.Character)
+}
+
 // formatEdits returns the edits that replace a document with its chopped text, or none when
-// the chop changes nothing.
+// the chop changes nothing or the document is source code, which the prose fix would break.
 func (srv *Server) formatEdits(uri string) []TextEdit {
+	if isSource(uri) {
+		return []TextEdit{}
+	}
 	text := srv.docs[uri]
 	out, _ := srv.san.Fix(text)
 	if out == text {
