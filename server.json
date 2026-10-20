@@ -15,42 +15,42 @@
       "registryType": "mcpb",
       "identifier": "https://github.com/dcadolph/slop-chop/releases/download/v0.52.0/slop-chop-mcp_0.52.0_darwin_amd64.mcpb",
       "version": "0.52.0",
-      "fileSha256": "42e115dda976de31be0681b596f8bb4d39fcab871d28bf1b831fd0279038e434",
+      "fileSha256": "65a72297c0cfebd40265de83a593e5f47f589945b6e5b9384e0186e4bf8ff83b",
       "transport": { "type": "stdio" }
     },
     {
       "registryType": "mcpb",
       "identifier": "https://github.com/dcadolph/slop-chop/releases/download/v0.52.0/slop-chop-mcp_0.52.0_darwin_arm64.mcpb",
       "version": "0.52.0",
-      "fileSha256": "9224bd27fd1d123f0daaeb3590b94e2d963fd52c142ab3500f52e0fba915d5b1",
+      "fileSha256": "ffedcb06108fc2b6184bc344e46e96c2b13e7e57c17f92a57cd8854b1ce57bb1",
       "transport": { "type": "stdio" }
     },
     {
       "registryType": "mcpb",
       "identifier": "https://github.com/dcadolph/slop-chop/releases/download/v0.52.0/slop-chop-mcp_0.52.0_linux_amd64.mcpb",
       "version": "0.52.0",
-      "fileSha256": "a913bfb1a2658576d42c0abcf7573114dca0cb1a4a467e54fa4333500a0cf5e1",
+      "fileSha256": "40f8ff0fda9b47b83f043975f4999f1ad1cf8399abc111938040ab1dd0bc940c",
       "transport": { "type": "stdio" }
     },
     {
       "registryType": "mcpb",
       "identifier": "https://github.com/dcadolph/slop-chop/releases/download/v0.52.0/slop-chop-mcp_0.52.0_linux_arm64.mcpb",
       "version": "0.52.0",
-      "fileSha256": "bb74fae6baa69770a1cf3143104efb01e0c6edfc40b20a27f506c41931dbcda4",
+      "fileSha256": "f016df2a8e07b06a7086e455acf2fb1ee4bb1ed7fcd3ceacfa48bb018e2a7d2c",
       "transport": { "type": "stdio" }
     },
     {
       "registryType": "mcpb",
       "identifier": "https://github.com/dcadolph/slop-chop/releases/download/v0.52.0/slop-chop-mcp_0.52.0_windows_amd64.mcpb",
       "version": "0.52.0",
-      "fileSha256": "06e1c9a1ea6ce2896aff8e8d73ae2e8b3eb75f5aaf97ea38b43fdd00f168c2ba",
+      "fileSha256": "eee0ed209ec153a5a793c6445335808394919edf7e14472b4b1eeeeec10355bc",
       "transport": { "type": "stdio" }
     },
     {
       "registryType": "mcpb",
       "identifier": "https://github.com/dcadolph/slop-chop/releases/download/v0.52.0/slop-chop-mcp_0.52.0_windows_arm64.mcpb",
       "version": "0.52.0",
-      "fileSha256": "fff13cf80bf9a8a55d7f74cae0990219a1bbe45a307434cf751b1df2466d2bb6",
+      "fileSha256": "f9eb5b2b16012ba31a8e4378b0df43fdd5d62ee32d0d3898fb1f27fc101a8c3b",
       "transport": { "type": "stdio" }
     }
   ]
