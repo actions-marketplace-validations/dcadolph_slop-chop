@@ -1,5 +1,5 @@
 {
-  "scoringVersion": 2,
+  "scoringVersion": 3,
   "scores": {
     "ai-00cf9db5862f": {"academic":86,"cleaver":86,"corporate":86,"default":86,"marketing":86,"no-dashes":86,"plain":86,"typography":86},
     "ai-04cc9280e147": {"academic":88,"cleaver":90,"corporate":88,"default":88,"marketing":88,"no-dashes":88,"plain":88,"typography":88},
