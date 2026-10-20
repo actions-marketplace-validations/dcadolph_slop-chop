@@ -2,8 +2,9 @@
 
 slop-chop can run as a Language Server, so any editor that speaks LSP can flag and chop slop
 as you write. Tells show up as diagnostics, and the fix pass is offered two ways: a "Chop the
-slop" code action, and document formatting, so format-on-save chops the file. It uses the same
-profile, presets, and [voice](VOICE.md) as the command line.
+slop" code action, and document formatting, so format-on-save chops the file. Source files work
+too, read as their comments and Python docstrings. It uses the same profile, presets, and
+[voice](VOICE.md) as the command line.
 
 ## Run it
 
@@ -12,8 +13,9 @@ slop-chop lsp
 ```
 
 It speaks the protocol on stdin and stdout. Point your editor's LSP client at that command for
-Markdown, plain text, and commit messages. Add `--preset cleaver` for the aggressive swaps, or
-`--voice path.json` for a specific voice. A `~/.slop-chop/voice.json` is picked up on its own.
+Markdown, plain text, commit messages, and source files. Add `--preset cleaver` for the
+aggressive swaps, or `--voice path.json` for a specific voice. A `~/.slop-chop/voice.json` is
+picked up on its own.
 
 ## JetBrains IDEs
 
@@ -30,7 +32,7 @@ With the built-in client:
 
 ```lua
 vim.api.nvim_create_autocmd("FileType", {
-  pattern = { "markdown", "text", "gitcommit" },
+  pattern = { "markdown", "text", "gitcommit", "go" },
   callback = function()
     vim.lsp.start({
       name = "slop-chop",
@@ -56,7 +58,13 @@ args = ["lsp", "--preset", "cleaver"]
 [[language]]
 name = "markdown"
 language-servers = ["slop-chop"]
+
+[[language]]
+name = "go"
+language-servers = ["gopls", "slop-chop"]
 ```
+
+Listing a language's servers in Helix replaces its default list, so keep the usual server in it.
 
 ## VS Code
 
@@ -68,12 +76,14 @@ directly: diagnostics as you type, a "Chop the slop" command, and a document for
 format-on-save chops the file. It also reads the comments in source files and offers a quick
 fix on each fixable tell. Its README covers the install. Rolling your own client
 instead works too: point it at `slop-chop lsp` with a document selector for `markdown`,
-`plaintext`, and `git-commit`. The language server reads a whole document as prose, so keep
-it to those prose types. Comment scanning lives in the extension and the command line for
-now, through `slop-chop check --as .go`.
+`plaintext`, and `git-commit`, and add any source languages you want read as comments.
 
 ## What it provides
 
-- **Diagnostics** for every tell, with the rule name and the swap it would make.
-- **Code action** "Chop the slop" to rewrite the whole document.
-- **Formatting** that chops on demand or on save.
+- Diagnostics for every tell, with the rule name and the swap it would make.
+- A "Chop the slop" code action that rewrites a prose document whole.
+- Formatting that chops a prose document on demand or on save.
+- Quick fixes on source files, one per tell with a safe swap, each replacing just that
+  span. Tells with no swap stay diagnostics. A source file gets no whole-document chop and
+  formatting returns no edits, so format-on-save never touches code. The server picks the
+  treatment from the file extension, and data files like `.json` and `.csv` get nothing.
