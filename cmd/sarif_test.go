@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -117,6 +119,84 @@ func TestSARIFTitle(t *testing.T) {
 	}
 }
 
+// TestSARIFName checks the Pascal-case name each rule gets.
+func TestSARIFName(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		WantResult string
+		In         string
+	}{{ // Test 0: A buzzword names its word.
+		In: "word:delve", WantResult: "BuzzwordDelve",
+	}, { // Test 1: A structural rule splits on hyphens.
+		In: "structural:copula-landing", WantResult: "StructuralTellCopulaLanding",
+	}, { // Test 2: A character rule spells its code point.
+		In: "char:—", WantResult: "CharacterU2014",
+	}, { // Test 3: An invisible character keeps lowercase hex.
+		In: "char:\u200b", WantResult: "CharacterU200b",
+	}, { // Test 4: A colonless cleanup rule is a cleanup.
+		In: "double-space", WantResult: "CleanupDoubleSpace",
+	}, { // Test 5: A phrase with an apostrophe drops it without splitting.
+		In: "phrase:in today's fast-paced world", WantResult: "StockPhraseInTodaysFastPacedWorld",
+	}, { // Test 6: A curly apostrophe is dropped too.
+		In: "phrase:it\u2019s worth noting", WantResult: "StockPhraseItsWorthNoting",
+	}, { // Test 7: A one-letter word extends the previous segment.
+		In: "phrase:a lot", WantResult: "StockPhraseaLot",
+	}, { // Test 8: A word starting with a digit extends the previous segment.
+		In: "word:2fa", WantResult: "Buzzword2fa",
+	}, { // Test 9: An unknown class still gets a name.
+		In: "future:thing", WantResult: "RuleThing",
+	}, { // Test 10: A cased non-ASCII letter stays a letter.
+		In: "word:naïve", WantResult: "BuzzwordNaïve",
+	}, { // Test 11: Uncased letters are spelled.
+		In: "word:中文", WantResult: "BuzzwordU4e2dU6587",
+	}, { // Test 12: Capitals lowercase before the first is raised.
+		In: "word:API", WantResult: "BuzzwordApi",
+	}, { // Test 13: Underscores and hyphens split words.
+		In: "regex:my_rule-2", WantResult: "RegexRuleMyRule2",
+	}, { // Test 14: A name with no words keeps only the title.
+		In: "phrase:!!!", WantResult: "StockPhrase",
+	}, { // Test 15: A long name clips on a rune boundary and drops a lone capital.
+		In: "phrase:" + strings.Repeat("abc ", 100), WantResult: "StockPhrase" + strings.Repeat("Abc", 81),
+	}}
+	for testNum, test := range tests {
+		t.Run(fmt.Sprintf("test %d", testNum), func(t *testing.T) {
+			t.Parallel()
+			class, name, ok := strings.Cut(test.In, ":")
+			if !ok {
+				class, name = "tidy", test.In
+			}
+			if diff := cmp.Diff(test.WantResult, sarifName(class, name)); diff != "" {
+				t.Errorf("mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+// FuzzSARIFName checks that every name is one valid Pascal-case identifier within the limit.
+func FuzzSARIFName(f *testing.F) {
+	seeds := []string{
+		"delve", "a lot", "中文", "ß", "ǅx", "ⅫA", "e\u0301", strings.Repeat("é", 300),
+		strings.Repeat("abc ", 100), "", "U", "u",
+	}
+	for _, seed := range seeds {
+		f.Add("phrase", seed)
+		f.Add("char", seed)
+	}
+	pascal := regexp.MustCompile(`^(\p{Lu}[\p{Ll}\p{Nd}]+)+$`)
+	f.Fuzz(func(t *testing.T, class, name string) {
+		got := sarifName(class, name)
+		if !pascal.MatchString(got) {
+			t.Errorf("sarifName(%q, %q) = %q, not Pascal case", class, name, got)
+		}
+		if len(got) > sarifNameMax {
+			t.Errorf("sarifName(%q, %q) is %d bytes, over %d", class, name, len(got), sarifNameMax)
+		}
+		if !utf8.ValidString(got) {
+			t.Errorf("sarifName(%q, %q) = %q, invalid UTF-8", class, name, got)
+		}
+	})
+}
+
 // TestCheckSARIF drives check --sarif over files and decodes the log: one run, rules sorted
 // and deduplicated with every result pointing at its own rule, levels from score weight,
 // relative URIs, and the usual exit codes.
@@ -187,6 +267,13 @@ func TestCheckSARIF(t *testing.T) {
 			levels := make(map[string]string)
 			for _, r := range run.Tool.Driver.Rules {
 				rules = append(rules, r.ID)
+				class, name, ok := strings.Cut(r.ID, ":")
+				if !ok {
+					class, name = "tidy", r.ID
+				}
+				if want := sarifName(class, name); r.Name != want || r.Name == "" {
+					t.Errorf("rule %s has name %q, want %q", r.ID, r.Name, want)
+				}
 				levels[r.ID] = r.DefaultConfiguration.Level
 			}
 			if diff := cmp.Diff(test.WantRules, rules, cmpopts.EquateEmpty()); diff != "" {
