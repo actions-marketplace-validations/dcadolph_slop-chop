@@ -81,7 +81,9 @@ has the method and the caveats.
 
 It stays quiet on human writing. Scored against 886 open-source READMEs across seven
 language ecosystems, most from projects with no push since 2021, seven reach the line where
-text stops reading clean. That is 0.8 percent.
+text stops reading clean. That is 0.8 percent, and it is the line the GitHub Action fails on
+by default. `slop-chop check` is stricter. It fails a file on any single tell that carries
+weight, and 41.5 percent of the same READMEs use at least one.
 
 Word lists lose to a thesaurus. `slop-chop attack` swaps text to dodge the rules without
 improving it, and 33 of 74 word tells slip past. Only 1 of 90 structural tells does, which
