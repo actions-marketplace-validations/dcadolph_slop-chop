@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://slop-chop.com"><img src="https://img.shields.io/badge/try_it-slop--chop.com-9bcf1a" alt="Try it at slop-chop.com"></a>
-  <a href="https://github.com/dcadolph/slop-chop/releases/latest"><img src="https://img.shields.io/badge/release-v0.51.0-9bcf1a" alt="Latest release"></a>
+  <a href="https://github.com/dcadolph/slop-chop/releases/latest"><img src="https://img.shields.io/badge/release-v0.52.0-9bcf1a" alt="Latest release"></a>
   <a href="https://github.com/dcadolph/slop-chop/actions/workflows/ci.yml"><img src="https://github.com/dcadolph/slop-chop/actions/workflows/ci.yml/badge.svg" alt="ci status"></a>
   <a href="https://pkg.go.dev/github.com/dcadolph/slop-chop/sanitize"><img src="https://pkg.go.dev/badge/github.com/dcadolph/slop-chop/sanitize.svg" alt="Go reference"></a>
 </p>
@@ -228,7 +228,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dcadolph/slop-chop@v0.51.0
+      - uses: dcadolph/slop-chop@v0.52.0
         with:
           files: docs/intro.md docs/guide.md
           # max: 25                   # optional, the score line
@@ -285,7 +285,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.head_ref }}
-      - uses: dcadolph/slop-chop@v0.51.0
+      - uses: dcadolph/slop-chop@v0.52.0
         with:
           files: docs/intro.md docs/guide.md
           mode: fix
@@ -313,7 +313,7 @@ jobs:
       security-events: write
     steps:
       - uses: actions/checkout@v4
-      - uses: dcadolph/slop-chop@v0.51.0
+      - uses: dcadolph/slop-chop@v0.52.0
         with:
           files: docs/intro.md docs/guide.md
           sarif: slop-chop.sarif
@@ -347,7 +347,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dcadolph/slop-chop@v0.51.0
+      - uses: dcadolph/slop-chop@v0.52.0
         with:
           pull-request: "true"
 ```
