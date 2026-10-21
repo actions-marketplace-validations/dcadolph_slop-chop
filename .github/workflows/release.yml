@@ -301,7 +301,7 @@ jobs:
             echo "OpenVSX already holds ${VER}; nothing to do"
             exit 0
           fi
-          ( cd vscode && npx -y @vscode/vsce package --no-dependencies )
+          ( cd vscode && npx -y @vscode/vsce@4.0.0 package --no-dependencies )
           npx -y ovsx publish "vscode/slop-chop-${VER}.vsix" -p "$OVSX_TOKEN"
 
       # The Marketplace takes trusted publishing from GitHub Actions, where vsce exchanges
