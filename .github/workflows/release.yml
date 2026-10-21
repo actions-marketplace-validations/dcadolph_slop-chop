@@ -32,7 +32,7 @@ jobs:
       # same loud failure the Homebrew and Obsidian steps use.
       OVSX_TOKEN: ${{ secrets.OVSX_TOKEN }}
       JETBRAINS_MARKETPLACE_TOKEN: ${{ secrets.JETBRAINS_MARKETPLACE_TOKEN }}
-      VSCE_PAT: ${{ secrets.VSCE_PAT }}
+      VSCE_OIDC: ${{ vars.VSCE_OIDC }}
       # A fork has no publish credentials and should still cut a normal release, so a
       # missing token is skipped there. On the repository that owns these channels a
       # missing token is a publish that silently did not happen, which is how a stale
@@ -304,10 +304,14 @@ jobs:
           ( cd vscode && npx -y @vscode/vsce package --no-dependencies )
           npx -y ovsx publish "vscode/slop-chop-${VER}.vsix" -p "$OVSX_TOKEN"
 
-      # The Microsoft marketplace takes a Personal Access Token from Azure DevOps with the
-      # Marketplace (Manage) scope. Microsoft retires global tokens on 2026-12-01 and
-      # recommends Entra ID workload identity with vsce publish --azure-credential, so this
-      # is the step to rework before then.
+      # The Marketplace takes trusted publishing from GitHub Actions, where vsce exchanges
+      # this workflow's OIDC token for a short-lived Marketplace token with no secret to
+      # rotate. Global PATs stop working on 2026-12-01 and this repository never used one.
+      # The exchange works only after a trusted publishing policy for this repository and
+      # workflow is registered on marketplace.visualstudio.com, which Microsoft had not
+      # opened as of 2026-10-20. The repository variable VSCE_OIDC records that
+      # registration, and until it is true the step only packages the vsix for a manual
+      # upload.
       - name: Publish to the VS Code Marketplace
         id: vscode
         continue-on-error: true
@@ -315,23 +319,32 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          if [ -z "${VSCE_PAT:-}" ]; then
-            echo "::warning::VSCE_PAT is not set, so the VS Code Marketplace still serves its" \
-              "previous release. Add the secret and re-run to publish from CI."
-            exit 0
-          fi
           VER="${TAG#v}"
           pkg="vscode/slop-chop-${VER}.vsix"
-          ( cd vscode && npx -y @vscode/vsce package --no-dependencies )
+          ( cd vscode && npx -y @vscode/vsce@4.0.0 package --no-dependencies )
+          if [ "${VSCE_OIDC:-}" != "true" ]; then
+            echo "::warning::VS Code Marketplace trusted publishing is not registered, so the" \
+              "Marketplace still serves its previous release. Upload the slop-chop-vsix" \
+              "artifact from this run at https://marketplace.visualstudio.com/manage."
+            exit 0
+          fi
           # The marketplace rejects a version it already holds, which is what a re-run of a
           # shipped tag looks like, so that one rejection is a no-op rather than a failure.
-          out="$(npx -y @vscode/vsce publish --packagePath "$pkg" -p "$VSCE_PAT" 2>&1)" && rc=0 || rc=$?
+          out="$(npx -y @vscode/vsce@4.0.0 publish --oidc --packagePath "$pkg" 2>&1)" && rc=0 || rc=$?
           echo "$out"
           if [ "$rc" -ne 0 ] && echo "$out" | grep -qi "already exists"; then
             echo "the marketplace already holds ${VER}; nothing to publish"
             exit 0
           fi
           exit "$rc"
+
+      - name: Keep the vsix for a manual Marketplace upload
+        if: steps.vscode.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: slop-chop-vsix
+          path: vscode/slop-chop-*.vsix
+          if-no-files-found: error
 
       - uses: actions/setup-java@v4
         with:
