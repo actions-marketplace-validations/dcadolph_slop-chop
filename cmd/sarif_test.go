@@ -139,8 +139,8 @@ func TestSARIFName(t *testing.T) {
 		In: "phrase:in today's fast-paced world", WantResult: "StockPhraseInTodaysFastPacedWorld",
 	}, { // Test 6: A curly apostrophe is dropped too.
 		In: "phrase:it\u2019s worth noting", WantResult: "StockPhraseItsWorthNoting",
-	}, { // Test 7: A one-letter word extends the previous segment.
-		In: "phrase:a lot", WantResult: "StockPhraseaLot",
+	}, { // Test 7: A one-letter word is raised onto the next word.
+		In: "phrase:a lot", WantResult: "StockPhraseAlot",
 	}, { // Test 8: A word starting with a digit extends the previous segment.
 		In: "word:2fa", WantResult: "Buzzword2fa",
 	}, { // Test 9: An unknown class still gets a name.
@@ -157,6 +157,26 @@ func TestSARIFName(t *testing.T) {
 		In: "phrase:!!!", WantResult: "StockPhrase",
 	}, { // Test 15: A long name clips on a rune boundary and drops a lone capital.
 		In: "phrase:" + strings.Repeat("abc ", 100), WantResult: "StockPhrase" + strings.Repeat("Abc", 81),
+	}, { // Test 16: A one-letter word before a two-letter word is raised.
+		In: "phrase:x ab", WantResult: "StockPhraseXab",
+	}, { // Test 17: A combining mark splits the word and the letter stays lowercase.
+		In: "word:e\u0301", WantResult: "Buzzworde",
+	}, { // Test 18: A one-letter word is raised onto a digit-led word.
+		In: "phrase:a 2fa", WantResult: "StockPhraseA2fa",
+	}, { // Test 19: A non-letter numeral splits the word.
+		In: "phrase:ⅫA lot", WantResult: "StockPhraseAlot",
+	}, { // Test 20: A digit-led word is written as is.
+		In: "phrase:top 10 tips", WantResult: "StockPhraseTop10Tips",
+	}, { // Test 21: A letter without an uppercase form is not held.
+		In: "phrase:ß lot", WantResult: "StockPhraseßLot",
+	}, { // Test 22: Consecutive one-letter words pair up.
+		In: "phrase:a b c lot", WantResult: "StockPhraseAbClot",
+	}, { // Test 23: A held letter is written lowercase before a spelled word.
+		In: "phrase:a 中 lot", WantResult: "StockPhraseaU4e2dLot",
+	}, { // Test 24: A one-letter word after a digit-led word is raised.
+		In: "phrase:10 a lot", WantResult: "StockPhrase10Alot",
+	}, { // Test 25: A trailing one-letter word is written lowercase.
+		In: "phrase:x y z", WantResult: "StockPhraseXyz",
 	}}
 	for testNum, test := range tests {
 		t.Run(fmt.Sprintf("test %d", testNum), func(t *testing.T) {
@@ -172,11 +192,58 @@ func TestSARIFName(t *testing.T) {
 	}
 }
 
+// TestSARIFUniqueNames checks that repeated names gain the smallest free numeric suffix.
+func TestSARIFUniqueNames(t *testing.T) {
+	t.Parallel()
+	long := strings.Repeat("Ab", 127) + "c"
+	pascal := regexp.MustCompile(`^(\p{Lu}[\p{Ll}\p{Nd}]+)+$`)
+	tests := []struct {
+		WantResult []string
+		In         []string
+	}{{ // Test 0: No repeats stay unchanged.
+		In:         []string{"BuzzwordAb", "BuzzwordCd"},
+		WantResult: []string{"BuzzwordAb", "BuzzwordCd"},
+	}, { // Test 1: One repeat takes 2.
+		In:         []string{"BuzzwordCuttingEdge", "BuzzwordCuttingEdge"},
+		WantResult: []string{"BuzzwordCuttingEdge", "BuzzwordCuttingEdge2"},
+	}, { // Test 2: Three repeats take 2 and 3.
+		In:         []string{"BuzzwordEdge", "BuzzwordEdge", "BuzzwordEdge"},
+		WantResult: []string{"BuzzwordEdge", "BuzzwordEdge2", "BuzzwordEdge3"},
+	}, { // Test 3: A bare name that equals a suffix wins and the repeat moves to 3.
+		In:         []string{"BuzzwordEdge", "BuzzwordEdge", "BuzzwordEdge2"},
+		WantResult: []string{"BuzzwordEdge", "BuzzwordEdge3", "BuzzwordEdge2"},
+	}, { // Test 4: A 255-byte repeat is clipped to fit its suffix.
+		In:         []string{long, long},
+		WantResult: []string{long, long[:254] + "2"},
+	}}
+	for testNum, test := range tests {
+		t.Run(fmt.Sprintf("test %d", testNum), func(t *testing.T) {
+			t.Parallel()
+			rules := make([]sarifRule, len(test.In))
+			for i, name := range test.In {
+				rules[i].Name = name
+			}
+			sarifUniqueNames(rules)
+			got := make([]string, len(rules))
+			for i, r := range rules {
+				got[i] = r.Name
+				if len(r.Name) > sarifNameMax || !pascal.MatchString(r.Name) {
+					t.Errorf("name %q is over the limit or not Pascal case", r.Name)
+				}
+			}
+			if diff := cmp.Diff(test.WantResult, got); diff != "" {
+				t.Errorf("mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
 // FuzzSARIFName checks that every name is one valid Pascal-case identifier within the limit.
 func FuzzSARIFName(f *testing.F) {
 	seeds := []string{
 		"delve", "a lot", "中文", "ß", "ǅx", "ⅫA", "e\u0301", strings.Repeat("é", 300),
-		strings.Repeat("abc ", 100), "", "U", "u",
+		strings.Repeat("abc ", 100), "", "U", "u", "top 10 tips", "a b c lot", "a 中 lot", "10 a lot",
+		"x y z", "ß lot", "a 2fa",
 	}
 	for _, seed := range seeds {
 		f.Add("phrase", seed)

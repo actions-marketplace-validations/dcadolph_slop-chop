@@ -207,6 +207,7 @@ func buildSARIF(s *sanitize.Sanitizer, version string, files []sarifFile) sarifL
 		index[id] = i
 		rules = append(rules, sarifRuleFor(s, id, walkers))
 	}
+	sarifUniqueNames(rules)
 
 	results := make([]sarifResult, 0)
 	for _, file := range files {
@@ -295,12 +296,43 @@ func sarifName(class, name string) string {
 	var b strings.Builder
 	sarifPascal(&b, title, false)
 	sarifPascal(&b, name, class == "char")
-	return sarifClip(b.String())
+	return sarifClip(b.String(), sarifNameMax)
+}
+
+// sarifUniqueNames rewrites repeated names in rules, which are in id order, so every name in
+// the run is unique. Every bare name is reserved first. The first rule by id keeps a shared
+// name, and each later one takes the smallest decimal suffix from 2 up that collides with no
+// bare name and no name already assigned. A name that would pass sarifNameMax with its suffix
+// has its bare part clipped first.
+func sarifUniqueNames(rules []sarifRule) {
+	taken := make(map[string]bool, len(rules))
+	for _, r := range rules {
+		taken[r.Name] = true
+	}
+	kept := make(map[string]bool, len(rules))
+	for i := range rules {
+		bare := rules[i].Name
+		if !kept[bare] {
+			kept[bare] = true
+			continue
+		}
+		for n := 2; ; n++ {
+			suffix := strconv.Itoa(n)
+			cand := sarifClip(bare, sarifNameMax-len(suffix)) + suffix
+			if !taken[cand] {
+				taken[cand] = true
+				rules[i].Name = cand
+				break
+			}
+		}
+	}
 }
 
 // sarifPascal appends s to b as Pascal-case segments. With spellAll, every rune is spelled as
 // U plus lowercase hex. Otherwise apostrophes are dropped, words split on every rune that is
-// not a letter or digit, and runes that do not lowercase to a letter or digit are spelled.
+// not a letter or digit, and runes that do not lowercase to a letter or digit are spelled. A
+// one-letter word is held and raised onto the next word when that word starts with a lowercase
+// letter or digit. Otherwise, and at the end of the input, it is written lowercase.
 func sarifPascal(b *strings.Builder, s string, spellAll bool) {
 	if spellAll {
 		for _, r := range s {
@@ -312,6 +344,7 @@ func sarifPascal(b *strings.Builder, s string, spellAll bool) {
 	words := strings.FieldsFunc(s, func(r rune) bool {
 		return !unicode.IsLetter(r) && !unicode.IsDigit(r)
 	})
+	var held rune
 	for _, word := range words {
 		var w strings.Builder
 		for _, r := range word {
@@ -324,6 +357,20 @@ func sarifPascal(b *strings.Builder, s string, spellAll bool) {
 		}
 		out := w.String()
 		first, size := utf8.DecodeRuneInString(out)
+		if held != 0 {
+			if unicode.IsLower(first) || unicode.IsDigit(first) {
+				b.WriteRune(unicode.ToUpper(held))
+				b.WriteString(out)
+				held = 0
+				continue
+			}
+			b.WriteRune(held)
+			held = 0
+		}
+		if size == len(out) && unicode.IsUpper(unicode.ToUpper(first)) {
+			held = first
+			continue
+		}
 		next, _ := utf8.DecodeRuneInString(out[size:])
 		up := unicode.ToUpper(first)
 		if first != 'U' && unicode.IsUpper(up) && (unicode.IsLower(next) || unicode.IsDigit(next)) {
@@ -331,15 +378,18 @@ func sarifPascal(b *strings.Builder, s string, spellAll bool) {
 		}
 		b.WriteString(out)
 	}
+	if held != 0 {
+		b.WriteRune(held)
+	}
 }
 
-// sarifClip cuts s to sarifNameMax bytes on a rune boundary, then drops a trailing uppercase
+// sarifClip cuts s to limit bytes on a rune boundary, then drops a trailing uppercase
 // rune so no segment ends as a lone capital.
-func sarifClip(s string) string {
-	if len(s) <= sarifNameMax {
+func sarifClip(s string, limit int) string {
+	if len(s) <= limit {
 		return s
 	}
-	cut := sarifNameMax
+	cut := limit
 	for cut > 0 && !utf8.RuneStart(s[cut]) {
 		cut--
 	}
