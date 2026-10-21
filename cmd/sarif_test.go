@@ -172,6 +172,52 @@ func TestSARIFName(t *testing.T) {
 	}
 }
 
+// TestSARIFUniqueNames checks that repeated names gain the smallest free numeric suffix.
+func TestSARIFUniqueNames(t *testing.T) {
+	t.Parallel()
+	long := strings.Repeat("Ab", 127) + "c"
+	pascal := regexp.MustCompile(`^(\p{Lu}[\p{Ll}\p{Nd}]+)+$`)
+	tests := []struct {
+		WantResult []string
+		In         []string
+	}{{ // Test 0: No repeats stay unchanged.
+		In:         []string{"BuzzwordAb", "BuzzwordCd"},
+		WantResult: []string{"BuzzwordAb", "BuzzwordCd"},
+	}, { // Test 1: One repeat takes 2.
+		In:         []string{"BuzzwordCuttingEdge", "BuzzwordCuttingEdge"},
+		WantResult: []string{"BuzzwordCuttingEdge", "BuzzwordCuttingEdge2"},
+	}, { // Test 2: Three repeats take 2 and 3.
+		In:         []string{"BuzzwordEdge", "BuzzwordEdge", "BuzzwordEdge"},
+		WantResult: []string{"BuzzwordEdge", "BuzzwordEdge2", "BuzzwordEdge3"},
+	}, { // Test 3: A bare name that equals a suffix wins and the repeat moves to 3.
+		In:         []string{"BuzzwordEdge", "BuzzwordEdge", "BuzzwordEdge2"},
+		WantResult: []string{"BuzzwordEdge", "BuzzwordEdge3", "BuzzwordEdge2"},
+	}, { // Test 4: A 255-byte repeat is clipped to fit its suffix.
+		In:         []string{long, long},
+		WantResult: []string{long, long[:254] + "2"},
+	}}
+	for testNum, test := range tests {
+		t.Run(fmt.Sprintf("test %d", testNum), func(t *testing.T) {
+			t.Parallel()
+			rules := make([]sarifRule, len(test.In))
+			for i, name := range test.In {
+				rules[i].Name = name
+			}
+			sarifUniqueNames(rules)
+			got := make([]string, len(rules))
+			for i, r := range rules {
+				got[i] = r.Name
+				if len(r.Name) > sarifNameMax || !pascal.MatchString(r.Name) {
+					t.Errorf("name %q is over the limit or not Pascal case", r.Name)
+				}
+			}
+			if diff := cmp.Diff(test.WantResult, got); diff != "" {
+				t.Errorf("mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
 // FuzzSARIFName checks that every name is one valid Pascal-case identifier within the limit.
 func FuzzSARIFName(f *testing.F) {
 	seeds := []string{
