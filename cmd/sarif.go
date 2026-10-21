@@ -330,7 +330,9 @@ func sarifUniqueNames(rules []sarifRule) {
 
 // sarifPascal appends s to b as Pascal-case segments. With spellAll, every rune is spelled as
 // U plus lowercase hex. Otherwise apostrophes are dropped, words split on every rune that is
-// not a letter or digit, and runes that do not lowercase to a letter or digit are spelled.
+// not a letter or digit, and runes that do not lowercase to a letter or digit are spelled. A
+// one-letter word is held and raised onto the next word when that word starts with a lowercase
+// letter or digit. Otherwise, and at the end of the input, it is written lowercase.
 func sarifPascal(b *strings.Builder, s string, spellAll bool) {
 	if spellAll {
 		for _, r := range s {
@@ -342,6 +344,7 @@ func sarifPascal(b *strings.Builder, s string, spellAll bool) {
 	words := strings.FieldsFunc(s, func(r rune) bool {
 		return !unicode.IsLetter(r) && !unicode.IsDigit(r)
 	})
+	var held rune
 	for _, word := range words {
 		var w strings.Builder
 		for _, r := range word {
@@ -354,12 +357,29 @@ func sarifPascal(b *strings.Builder, s string, spellAll bool) {
 		}
 		out := w.String()
 		first, size := utf8.DecodeRuneInString(out)
+		if held != 0 {
+			if unicode.IsLower(first) || unicode.IsDigit(first) {
+				b.WriteRune(unicode.ToUpper(held))
+				b.WriteString(out)
+				held = 0
+				continue
+			}
+			b.WriteRune(held)
+			held = 0
+		}
+		if size == len(out) && unicode.IsUpper(unicode.ToUpper(first)) {
+			held = first
+			continue
+		}
 		next, _ := utf8.DecodeRuneInString(out[size:])
 		up := unicode.ToUpper(first)
 		if first != 'U' && unicode.IsUpper(up) && (unicode.IsLower(next) || unicode.IsDigit(next)) {
 			out = string(up) + out[size:]
 		}
 		b.WriteString(out)
+	}
+	if held != 0 {
+		b.WriteRune(held)
 	}
 }
 
