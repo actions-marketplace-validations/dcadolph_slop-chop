@@ -339,12 +339,12 @@ jobs:
           exit "$rc"
 
       - name: Keep the vsix for a manual Marketplace upload
-        if: steps.vscode.outcome == 'success'
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: slop-chop-vsix
           path: vscode/slop-chop-*.vsix
-          if-no-files-found: error
+          if-no-files-found: warn
 
       - uses: actions/setup-java@v4
         with:
