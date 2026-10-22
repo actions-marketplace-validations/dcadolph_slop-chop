@@ -14,7 +14,7 @@ hide:
 
 <p class="sc-artifacts">Emails. Resumes. Blog posts. Docs. LinkedIn. READMEs.</p>
 
-<p class="subtitle">Paste text that sounds like a bot, get back text that sounds like you. Em-dashes, buzzwords, stock phrases, and the newer tells models switched to once everyone learned the old ones: the double hyphen, the "The best part?" reveal, emoji bullets. All chopped in one pass, right in your browser. Plug in a model when you want a deeper rewrite.</p>
+<p class="subtitle">Paste text that sounds like a bot, get back text that sounds like you. Em-dashes, buzzwords, stock phrases, and the newer tells models switched to once everyone learned the old ones: the double hyphen, the teaser question, emoji bullets. All chopped in one pass, right in your browser. Plug in a model when you want a deeper rewrite.</p>
 
 **Paired with your AI, it is the rails.** It runs after the model to catch what drifted, gates a build on the score, and bosses the agent into cleaning its own work to your standard, not its whim.
 { .subtitle .sc-rails }
@@ -217,7 +217,7 @@ There is a second problem a model cannot solve for you. Every tell that gets fam
 
     ---
 
-    Models trained away "delve" and the em-dash, then picked up new habits: the double hyphen, the "The best part?" reveal, bold-label bullets, emoji headings. The default profile tracks what models write now, with 161 buzzwords, 46 stock phrases, and 61 sentence shapes.
+    Models trained away "delve" and the em-dash, then picked up new habits: the double hyphen, the teaser question, bold-label bullets, emoji headings. The default profile tracks what models write now, with 161 buzzwords, 46 stock phrases, and 61 sentence shapes.
 
 -   :material-scale-balance:{ .lg .middle } __Measured, not guessed__
 
