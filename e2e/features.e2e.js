@@ -47,6 +47,44 @@ async function main() {
   }
   log("score breakdown:", pop.tells, "tells |", pop.density);
 
+  // Step 4a: the breakdown explains the whole score. A weighing-heavy text scores on a part
+  // the popover once left out, so its rows must name it and add up to the chip's number.
+  const sampleBeforeWeighing = await page.inputValue("#sc-in");
+  await page.fill(
+    "#sc-in",
+    "On the one hand the plan is cheap. On the other hand it is slow. At the same time it is " +
+      "simple. On balance it cuts both ways. In the end it matters as well.",
+  );
+  await page.waitForTimeout(400);
+  await page.click("#sc-score");
+  const parts = await page.evaluate(() => {
+    const value = Number(document.getElementById("sc-score").textContent.replace(/\D+/g, ""));
+    const pop = document.getElementById("sc-score-pop");
+    let sum = 0;
+    const rows = [];
+    for (const dd of pop.querySelectorAll(".sc-score-stats dd")) {
+      if (dd.parentElement.hidden || !dd.previousElementSibling) continue;
+      const m = dd.textContent.match(/(?:adds|adding) (\d+)/);
+      if (m) sum += Number(m[1]);
+      rows.push(dd.previousElementSibling.textContent + ": " + dd.textContent);
+    }
+    const total = document.getElementById("sc-pop-total-row");
+    return { value, sum, rows, totalHidden: !total || total.hidden, total: total ? total.textContent : "" };
+  });
+  await page.keyboard.press("Escape");
+  if (!parts.rows.some((r) => r.startsWith("Weighing: adds"))) {
+    throw new Error("weighing part missing from the breakdown: " + JSON.stringify(parts));
+  }
+  if (parts.value === 0 || (parts.totalHidden && parts.sum !== parts.value)) {
+    throw new Error("breakdown rows do not add up to the score: " + JSON.stringify(parts));
+  }
+  if (!parts.totalHidden && !parts.total.includes(String(parts.sum))) {
+    throw new Error("total line does not name the parts' sum: " + JSON.stringify(parts));
+  }
+  await page.fill("#sc-in", sampleBeforeWeighing);
+  await page.waitForTimeout(400);
+  log("breakdown reconciles:", parts.sum, "of", parts.value, "|", parts.rows.join(" | "));
+
   // Step 4b: each chip is colored by the band the engine reports. The thresholds below are
   // the test's own copy, an outside check on the engine rather than a second source for it.
   const chips = await page.evaluate(() => ({
