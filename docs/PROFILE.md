@@ -353,7 +353,9 @@ this line is checked as usual
 
 `slop-chop-ignore` silences the line it sits on. `slop-chop-ignore-next-line` silences the
 line after it and not itself. They usually live in an HTML comment so they read as a
-directive rather than prose, but any line containing the token counts.
+directive rather than prose, but any line containing the token counts. A token inside inline
+code or a code block is text about the directive, so a doc can show the directive in
+backticks without silencing anything.
 
 ## A full example
 
