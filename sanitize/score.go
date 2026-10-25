@@ -61,6 +61,9 @@ type Score struct {
 	Density int `json:"density"`
 	// Hedging is the points a hedge-heavy register added to Value.
 	Hedging int `json:"hedging"`
+	// Weighing is the points the weighing register added to Value: every side presented
+	// and nothing chosen, read from the density of balance-and-defer connectors.
+	Weighing int `json:"weighing"`
 	// Cadence is the points a flat rhythm added to Value. Unlike a tell it cannot be
 	// swapped away, since escaping it means rewriting the sentences rather than looking
 	// up synonyms, and the attack harness measures that immunity directly. How well it
@@ -247,6 +250,7 @@ func (s *Sanitizer) Score(text string) Score {
 		Punchiness:     cadenceReport(punchiness(prose)),
 		Density:        int(math.Round(density)),
 		Hedging:        int(math.Round(hedging)),
+		Weighing:       int(math.Round(weighing)),
 		Drumbeat:       int(math.Round(drumbeat)),
 		Tails:          int(math.Round(tails)),
 		Clauses:        int(math.Round(clauses)),
