@@ -184,13 +184,8 @@ func (srv *Server) findings(uri string) (string, []sanitize.Finding) {
 	if !source.Is(path) {
 		return text, srv.san.Check(text)
 	}
-	masked, ok := source.Mask(path, text)
-	if !ok {
-		return text, nil
-	}
-	return text, slices.DeleteFunc(srv.san.Check(masked), func(f sanitize.Finding) bool {
-		return sanitize.TidyRule(f.Rule)
-	})
+	findings, _ := source.CheckComments(srv.san, path, text)
+	return text, findings
 }
 
 // uriPath returns the file path a document URI names, so the server can tell source files
