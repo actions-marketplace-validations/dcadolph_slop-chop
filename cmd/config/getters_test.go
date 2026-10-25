@@ -58,6 +58,7 @@ func TestBoolGetters(t *testing.T) {
 		{Get: Rewrite, Env: "SLOP_CHOP_REWRITE", Def: DefaultRewrite, Name: "rewrite"},
 		{Get: Verify, Env: "SLOP_CHOP_VERIFY", Def: DefaultVerify, Name: "verify"},
 		{Get: VerifyStrict, Env: "SLOP_CHOP_VERIFY_STRICT", Def: DefaultVerifyStrict, Name: "verify-strict"},
+		{Get: CodeComments, Env: "SLOP_CHOP_CODE_COMMENTS", Def: DefaultCodeComments, Name: "code-comments"},
 	}
 	for testNum, test := range tests {
 		t.Run(fmt.Sprintf("test %d %s", testNum, test.Name), func(t *testing.T) {
