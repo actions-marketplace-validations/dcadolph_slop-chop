@@ -14,33 +14,61 @@ const (
 // sources are merged so the result is sorted and disjoint, which overlapsAny relies on to
 // decide whether a match is protected.
 func skipRanges(text string) [][2]int {
-	ranges := append(codeRanges(text), ignoredRanges(text)...)
+	code := codeRanges(text)
+	ranges := append(append([][2]int{}, code...), ignoredRanges(text, code)...)
 	ranges = append(ranges, structuralRanges(text)...)
 	return mergeRanges(ranges)
 }
 
 // ignoredRanges returns the byte ranges of lines silenced by an ignore directive. A line
 // holding the next-line directive silences the line after it, and a line holding the plain
-// directive silences itself. The next-line form is checked first, since its token contains
-// the plain token as a prefix.
-func ignoredRanges(text string) [][2]int {
+// directive silences itself. code holds the protected code ranges, sorted and disjoint. A
+// directive inside one is text about the directive rather than a directive, so it silences
+// nothing.
+func ignoredRanges(text string, code [][2]int) [][2]int {
 	if !strings.Contains(text, ignoreToken) {
 		return nil
 	}
 	lines := lineRanges(text)
 	var ranges [][2]int
 	for i, lr := range lines {
-		line := text[lr[0]:lr[1]]
+		next, self := directivesOn(text, lr, code)
 		switch {
-		case strings.Contains(line, ignoreNextToken):
+		case next:
 			if i+1 < len(lines) {
 				ranges = append(ranges, lines[i+1])
 			}
-		case strings.Contains(line, ignoreToken):
+		case self:
 			ranges = append(ranges, lr)
 		}
 	}
 	return ranges
+}
+
+// directivesOn reports which directives the line at lr carries outside code: next for the
+// next-line form and self for the plain form. Each occurrence of the token is judged on its
+// own, so a line quoting one form in a code span and using the other in prose acts on the one
+// in prose. The next-line token starts with the plain token, so every occurrence is found by
+// the plain token and then told apart by prefix.
+func directivesOn(text string, lr [2]int, code [][2]int) (next, self bool) {
+	for at := lr[0]; at < lr[1]; {
+		idx := strings.Index(text[at:lr[1]], ignoreToken)
+		if idx < 0 {
+			break
+		}
+		start := at + idx
+		isNext := strings.HasPrefix(text[start:lr[1]], ignoreNextToken)
+		end := start + len(ignoreToken)
+		if isNext {
+			end = start + len(ignoreNextToken)
+		}
+		if !overlapsAny(code, start, end) {
+			next = next || isNext
+			self = self || !isNext
+		}
+		at = end
+	}
+	return next, self
 }
 
 // lineRanges returns the byte range of each line in text, the newline excluded. A trailing

@@ -214,7 +214,8 @@ rule, matched against the exact text a rule matched, without regard to case, so 
 positive can be silenced without turning off the rule that raised it. And a line carrying
 an inline directive is skipped: `<!-- slop-chop-ignore -->` silences its own line and
 `<!-- slop-chop-ignore-next-line -->` silences the line after it, the way a linter pragma
-does. Both the allow list and the directives apply to `check` and `fix` alike. See
+does. A directive written inside inline code or a code block is text about the directive and
+silences nothing. Both the allow list and the directives apply to `check` and `fix` alike. See
 [PROFILE.md](PROFILE.md) for how to use them.
 
 ## Under the hood
