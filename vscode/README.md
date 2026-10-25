@@ -1,8 +1,9 @@
 # slop-chop for VS Code
 
 Flag and chop AI writing tells in Markdown, plain text, commit messages, and the comments in
-your code. The extension runs your local `slop-chop` binary, so it uses the same profile,
-presets, and voice as the command line, and your text never leaves the machine.
+your code. The slop-chop engine ships inside the extension, so there is nothing else to
+install. It uses the same profile, presets, and voice as the command line, and your text
+never leaves the machine.
 
 ## What it does
 
@@ -26,23 +27,21 @@ triple-quoted strings stay code.
 
 ## Install
 
-It needs the binary first: `brew install dcadolph/tap/slop-chop`, or
-`go install github.com/dcadolph/slop-chop@latest`.
-
-Then install the extension. Search **slop-chop** in the Extensions view and pick the one from
+Search **slop-chop** in the Extensions view and pick the one from
 dcadolph, or run `code --install-extension dcadolph.slop-chop`. Cursor and VSCodium find it on
 Open VSX.
 
-The extension is plain JavaScript with no dependencies, so building from source is short.
-Package a vsix with `npx @vscode/vsce package` from this folder and install it via
-"Extensions: Install from VSIX".
+The extension is plain JavaScript with no dependencies. To build it from source, run
+`make vscode` at the repo root to stage the engine, then package a vsix with
+`npx @vscode/vsce package` from this folder and install it via "Extensions: Install from VSIX".
 
 ## Settings
 
-- `slop-chop.path`: path to the binary when it is not on PATH.
+- `slop-chop.path`: a `slop-chop` binary to run instead of the bundled engine, e.g. a build
+  of your own. Empty, the default, uses the bundled engine.
 - `slop-chop.preset`: preset to apply (default `cleaver`; empty for the default profile).
 - `slop-chop.codeComments`: check the comments in source files (default on). Turn it off to
   keep the extension to prose.
 
-Your `~/.slop-chop/voice.json` and a project's `.slop-chop.json` apply on their own, exactly
-as they do on the command line.
+Your `~/.slop-chop/voice.json` and the nearest `.slop-chop.json` above the file apply on their
+own, exactly as they do on the command line.

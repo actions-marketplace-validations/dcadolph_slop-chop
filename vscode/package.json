@@ -1,7 +1,7 @@
 {
   "name": "slop-chop",
   "displayName": "slop-chop",
-  "description": "Flag and chop AI writing tells in Markdown, text, commit messages, and code comments as you write. Runs the local slop-chop binary; your text never leaves your machine.",
+  "description": "Flag and chop AI writing tells in Markdown, text, commit messages, and code comments as you write. The engine runs inside the extension; your text never leaves your machine.",
   "version": "0.54.1",
   "publisher": "dcadolph",
   "license": "MIT",
@@ -78,9 +78,9 @@
       "properties": {
         "slop-chop.path": {
           "type": "string",
-          "default": "slop-chop",
+          "default": "",
           "scope": "machine",
-          "description": "Path to the slop-chop binary. Machine-scoped, so a workspace cannot point it at a repo-local executable."
+          "description": "Path to a slop-chop binary to run instead of the bundled engine. Empty uses the bundled engine. Machine-scoped, so a workspace cannot point it at a repo-local executable."
         },
         "slop-chop.preset": {
           "type": "string",

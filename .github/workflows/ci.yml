@@ -68,17 +68,23 @@ jobs:
           set -euo pipefail
           make obsidian
           make npm-package
+          make vscode
           # An empty variable in a recipe still runs, so the bundle can build from the
           # wrong bytes. Check the payload landed rather than trusting the exit code.
           test -s obsidian/dist/main.js
           grep -q "SLOP_WASM_B64_GZ" obsidian/dist/main.js
           test -s npm/engine/slop-chop.wasm
+          test -s vscode/engine/slop-chop.wasm
           # The MCP bundles are the artifact the registry points at, and nothing outside
           # the release built them either. A bundle that fails to build reaches a tag and
           # the registry entry names a file that was never attached.
           make mcpb
           test "$(ls dist/*.mcpb | wc -l)" -eq 6
           unzip -p dist/slop-chop-mcp_*_linux_amd64.mcpb manifest.json | grep -q '"type": "binary"'
+      # The extension runs the wasm engine in place of the binary, so on the same input the
+      # two must report the same findings at the same offsets and chop to the same text.
+      - name: The VS Code extension's bundled engine must match the binary
+        run: node --test vscode/engine.test.js
       - name: Every shipped surface must carry the same version
         run: make check-versions
       # Share the compiled binary so the check jobs need no Go toolchain, which keeps them off

@@ -26,6 +26,9 @@ coverage.out
 # Staged engine for the browser extension, produced by make extension
 /extension/engine/
 
+# Staged engine for the VS Code extension, produced by make vscode
+/vscode/engine/
+
 # Staged engine for the npm package, produced by make npm-package
 /npm/engine/
 /npm/*.tgz

@@ -72,8 +72,8 @@ Listing a language's servers in Helix replaces its default list, so keep the usu
 A ready-made extension is on the
 [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=dcadolph.slop-chop)
 and Open VSX, with its source under
-[`vscode/`](https://github.com/dcadolph/slop-chop/tree/main/vscode). It runs the binary
-directly: diagnostics as you type, a "Chop the slop" command, and a document formatter so
+[`vscode/`](https://github.com/dcadolph/slop-chop/tree/main/vscode). The engine ships inside
+it as wasm, so it needs no binary on the PATH: diagnostics as you type, a "Chop the slop" command, and a document formatter so
 format-on-save chops the file. It also reads the comments in source files and offers a quick
 fix on each fixable tell. Its README covers the install. Rolling your own client
 instead works too: point it at `slop-chop lsp` with a document selector for `markdown`,

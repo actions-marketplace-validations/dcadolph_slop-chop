@@ -8,9 +8,12 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"strings"
 	"syscall/js"
 
 	"github.com/dcadolph/slop-chop/internal/jsonutil"
+	"github.com/dcadolph/slop-chop/internal/source"
 	"github.com/dcadolph/slop-chop/rewrite/prompt"
 	"github.com/dcadolph/slop-chop/sanitize"
 )
@@ -67,6 +70,7 @@ func main() {
 	js.Global().Set("slopRewritePrompt", js.FuncOf(rewritePrompt))
 	js.Global().Set("slopJudgePrompt", js.FuncOf(judgePrompt))
 	js.Global().Set("slopVersion", js.FuncOf(engineVersion))
+	js.Global().Set("slopEditor", js.FuncOf(editor))
 	select {}
 }
 
@@ -139,6 +143,90 @@ func scoreOnly(_ js.Value, args []js.Value) any {
 	}
 	score := s.Score(req.Text)
 	return marshal(scoreResult{Score: score, Band: score.Band()})
+}
+
+// editorRequest is the payload slopEditor accepts. An editor hands over the raw contents of
+// the files the command line would discover, and the engine layers them with the command
+// line's own precedence, so the editor holds no copy of that rule.
+type editorRequest struct {
+	// Text is the document to check or fix.
+	Text string `json:"text"`
+	// As names the source type the document is read as, like .go or Makefile, so only its
+	// comments are checked. Empty reads the document as prose.
+	As string `json:"as"`
+	// Fix asks for the fixed prose as well as the findings. It is ignored for source, whose
+	// code a whole-document fix must never touch.
+	Fix bool `json:"fix"`
+	// Project is the raw JSON of the nearest .slop-chop.json, or empty when there is none.
+	Project string `json:"project"`
+	// Voice is the raw JSON of the personal voice file, or empty when there is none.
+	Voice string `json:"voice"`
+	// Presets names built-in presets, as the --preset flag does.
+	Presets []string `json:"presets"`
+	// Dialect overrides the profile's dialect when set.
+	Dialect string `json:"dialect"`
+}
+
+// editorResult is what slopEditor returns, encoded as JSON.
+type editorResult struct {
+	// Findings lists every rule match against the document, offsets in bytes of its UTF-8.
+	Findings []sanitize.Finding `json:"findings"`
+	// Output is the fixed prose when Fix was asked for, and empty otherwise.
+	Output string `json:"output,omitempty"`
+	// Scanned is false when the document's source type has no comment syntax, so nothing
+	// was read.
+	Scanned bool `json:"scanned"`
+}
+
+// editor checks or fixes one document for an editor extension. It takes one JSON string
+// argument shaped like editorRequest and returns a JSON string shaped like editorResult, or
+// {"error": "..."} when the request, a profile file, or a voice file does not hold up.
+func editor(_ js.Value, args []js.Value) any {
+	if len(args) != 1 {
+		return errJSON(errors.Join(ErrRequest, errors.New("slopEditor takes one JSON argument")))
+	}
+	var req editorRequest
+	if err := json.Unmarshal([]byte(args[0].String()), &req); err != nil {
+		return errJSON(errors.Join(ErrRequest, err))
+	}
+	layers := sanitize.Layers{Dialect: req.Dialect, Presets: req.Presets}
+	if req.Project != "" {
+		p, err := sanitize.Load(strings.NewReader(req.Project))
+		if err != nil {
+			return errJSON(fmt.Errorf(".slop-chop.json: %w", err))
+		}
+		layers.Project = &p
+	}
+	if req.Voice != "" {
+		v, err := sanitize.LoadVoice(strings.NewReader(req.Voice))
+		if err != nil {
+			return errJSON(fmt.Errorf("voice.json: %w", err))
+		}
+		layers.Voice = v
+	}
+	profile, err := layers.Profile()
+	if err != nil {
+		return errJSON(err)
+	}
+	s, err := sanitize.New(profile)
+	if err != nil {
+		return errJSON(err)
+	}
+	if req.As != "" {
+		findings, ok := source.CheckComments(s, req.As, req.Text)
+		if err := sanitize.Locate(req.Text, findings); err != nil {
+			return errJSON(err)
+		}
+		return marshal(editorResult{Findings: jsonutil.OrEmpty(findings), Scanned: ok})
+	}
+	res := editorResult{Scanned: true}
+	if req.Fix {
+		res.Output, res.Findings = s.Fix(req.Text)
+	} else {
+		res.Findings = s.Check(req.Text)
+	}
+	res.Findings = jsonutil.OrEmpty(res.Findings)
+	return marshal(res)
 }
 
 // defaults returns the built-in default profile as JSON, so the page can render the

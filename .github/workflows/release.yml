@@ -284,6 +284,13 @@ jobs:
           mv pkg.tmp npm/package.json
           npm publish npm/ --access public --provenance
 
+      # The vsix carries the wasm engine, so it is staged before either store packages it.
+      - name: Stage the engine into the VS Code extension
+        run: |
+          set -euo pipefail
+          make vscode
+          test -s vscode/engine/slop-chop.wasm
+
       - name: Publish to OpenVSX
         id: openvsx
         continue-on-error: true
