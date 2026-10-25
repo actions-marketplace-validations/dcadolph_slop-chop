@@ -228,7 +228,7 @@ jobs:
   slop:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dcadolph/slop-chop@v0.54.1
         with:
           files: docs/intro.md docs/guide.md
@@ -283,7 +283,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.head_ref }}
       - uses: dcadolph/slop-chop@v0.54.1
@@ -313,7 +313,7 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dcadolph/slop-chop@v0.54.1
         with:
           files: docs/intro.md docs/guide.md
@@ -347,7 +347,7 @@ jobs:
     if: github.event.pull_request.user.type != 'Bot'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dcadolph/slop-chop@v0.54.1
         with:
           pull-request: "true"
@@ -363,6 +363,10 @@ the repo's `.slop-chop.json` apply. Add `files` to check files in the same step,
 trigger. Code blocks and HTML comments are skipped, so a pull request template does not
 count against the author. To silence one line, the author puts a comment GitHub does not
 render above it: `<!-- slop-chop-ignore-next-line -->`.
+
+The Action installs Go with `actions/setup-go@v7`, which runs on Node 24. A self-hosted runner
+needs version 2.327.1 or newer. The setup step also sets `GOTOOLCHAIN=local` for the rest of
+the job, so later `go` commands in that job use the installed Go instead of downloading one.
 
 ## Use it as a Claude Code plugin
 
