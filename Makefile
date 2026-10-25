@@ -12,7 +12,7 @@ GOBIN := $(shell $(GO) env GOPATH)/bin
 endif
 
 .DEFAULT_GOAL := help
-.PHONY: build install uninstall test cover vet lint fmt tidy clean wasm obsidian npm-package worker site site-deploy mcpb server-json check-versions help
+.PHONY: build install uninstall test cover vet lint fmt tidy clean wasm obsidian npm-package vscode worker site site-deploy mcpb server-json check-versions help
 
 ## build: compile the binary into the repo root with the version stamped
 build:
@@ -76,6 +76,13 @@ npm-package: wasm
 	mkdir -p npm/engine
 	cp docs/assets/slop-chop.wasm npm/engine/slop-chop.wasm
 	cp docs/assets/wasm_exec.js npm/engine/wasm_exec.js
+
+## vscode: build the wasm engine and stage it into the VS Code extension, which runs it
+## in-process so the extension needs no binary on the PATH
+vscode: wasm
+	mkdir -p vscode/engine
+	cp docs/assets/slop-chop.wasm vscode/engine/slop-chop.wasm
+	cp docs/assets/wasm_exec.js vscode/engine/wasm_exec.js
 
 ## worker: build the wasm engine and stage it into the hosted API worker
 worker: wasm
@@ -223,7 +230,7 @@ check-versions:
 ## clean: remove the built binary, wasm artifacts, and coverage profile
 clean:
 	rm -f $(BINARY) coverage.out docs/assets/slop-chop.wasm docs/assets/wasm_exec.js
-	rm -rf obsidian/dist obsidian/engine build dist server.json
+	rm -rf obsidian/dist obsidian/engine vscode/engine build dist server.json
 
 ## help: list available targets
 help:
