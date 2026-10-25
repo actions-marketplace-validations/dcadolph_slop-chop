@@ -39,15 +39,30 @@ type Server struct {
 	w io.Writer
 	// mu serializes writes so replies and diagnostics do not interleave.
 	mu sync.Mutex
+	// proseOnly leaves source files alone: no diagnostics and no quick fixes on them.
+	proseOnly bool
 }
 
-// NewServer builds a Server around a sanitizer, reading from r and writing to w. It panics on
-// a nil sanitizer, which is a developer error.
-func NewServer(san *sanitize.Sanitizer, r io.Reader, w io.Writer) *Server {
+// Option configures a Server at construction.
+type Option func(*Server)
+
+// ProseOnly makes the server check prose documents only and leave source files alone, for an
+// editor whose user turned comment checking off.
+func ProseOnly() Option {
+	return func(srv *Server) { srv.proseOnly = true }
+}
+
+// NewServer builds a Server around a sanitizer, reading from r and writing to w. By default it
+// reads the comments in source files. It panics on a nil sanitizer, which is a developer error.
+func NewServer(san *sanitize.Sanitizer, r io.Reader, w io.Writer, opts ...Option) *Server {
 	if san == nil {
 		panic("lsp.NewServer: sanitizer required")
 	}
-	return &Server{san: san, docs: make(map[string]string), r: bufio.NewReader(r), w: w}
+	srv := &Server{san: san, docs: make(map[string]string), r: bufio.NewReader(r), w: w}
+	for _, opt := range opts {
+		opt(srv)
+	}
+	return srv
 }
 
 // Run reads and handles messages until the client sends exit or the stream ends.
@@ -183,6 +198,9 @@ func (srv *Server) findings(uri string) (string, []sanitize.Finding) {
 	path := uriPath(uri)
 	if !source.Is(path) {
 		return text, srv.san.Check(text)
+	}
+	if srv.proseOnly {
+		return text, nil
 	}
 	findings, _ := source.CheckComments(srv.san, path, text)
 	return text, findings

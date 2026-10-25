@@ -411,12 +411,18 @@ func TestProseGolden(t *testing.T) {
 // everything the server wrote.
 func runServer(t *testing.T, san *sanitize.Sanitizer, bodies ...string) []byte {
 	t.Helper()
+	return runServerWith(t, san, nil, bodies...)
+}
+
+// runServerWith is runServer for a server built with opts.
+func runServerWith(t *testing.T, san *sanitize.Sanitizer, opts []Option, bodies ...string) []byte {
+	t.Helper()
 	var in strings.Builder
 	for _, body := range bodies {
 		fmt.Fprintf(&in, "Content-Length: %d\r\n\r\n%s", len(body), body)
 	}
 	var out bytes.Buffer
-	if err := NewServer(san, strings.NewReader(in.String()), &out).Run(); err != nil {
+	if err := NewServer(san, strings.NewReader(in.String()), &out, opts...).Run(); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 	return out.Bytes()
@@ -556,6 +562,50 @@ func TestSourceNoComments(t *testing.T) {
 		if !bytes.Contains(frames[i], []byte(want)) {
 			t.Errorf("frame %d = %s, want %s", i, frames[i], want)
 		}
+	}
+}
+
+// TestProseOnly checks that a prose-only server leaves source files alone while prose keeps
+// its diagnostics, and that the same source file is read when the option is absent.
+func TestProseOnly(t *testing.T) {
+	t.Parallel()
+	san, err := sanitize.New(sanitize.Profile{WordReplace: map[string]string{"leverage": "use"}})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	bodies := []string{
+		`{"jsonrpc":"2.0","method":"textDocument/didOpen","params":` +
+			`{"textDocument":{"uri":"file:///main.go","text":"// we leverage it\nx := 1\n"}}}`,
+		`{"jsonrpc":"2.0","id":1,"method":"textDocument/codeAction","params":` +
+			`{"textDocument":{"uri":"file:///main.go"},"range":{"start":{"line":0,"character":0},` +
+			`"end":{"line":0,"character":17}}}}`,
+		`{"jsonrpc":"2.0","method":"textDocument/didOpen","params":` +
+			`{"textDocument":{"uri":"file:///notes.md","text":"we leverage it"}}}`,
+		`{"jsonrpc":"2.0","method":"exit"}`,
+	}
+	tests := []struct {
+		Opts      []Option
+		WantFrame []string
+	}{{ // Test 0: Prose only, the source file gets nothing and the prose file is checked.
+		Opts:      []Option{ProseOnly()},
+		WantFrame: []string{`"diagnostics":[]`, `"result":[]`, `"leverage`},
+	}, { // Test 1: By default the same source file's comment is checked and fixable.
+		Opts:      nil,
+		WantFrame: []string{`"leverage`, `change to \"use\"`, `"leverage`},
+	}}
+	for testNum, test := range tests {
+		t.Run(fmt.Sprintf("test %d", testNum), func(t *testing.T) {
+			t.Parallel()
+			frames := splitFrames(t, runServerWith(t, san, test.Opts, bodies...))
+			if len(frames) != len(test.WantFrame) {
+				t.Fatalf("frames = %d, want %d", len(frames), len(test.WantFrame))
+			}
+			for i, want := range test.WantFrame {
+				if !bytes.Contains(frames[i], []byte(want)) {
+					t.Errorf("frame %d = %s, want %s", i, frames[i], want)
+				}
+			}
+		})
 	}
 }
 
