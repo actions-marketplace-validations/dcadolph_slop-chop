@@ -47,6 +47,9 @@ type Profile struct {
 	// cleanups 0, and everything else 1. Findings themselves are unaffected; only the
 	// score moves.
 	ScoreWeights map[string]float64 `json:"scoreWeights"`
+	// SentenceLength sets the longest sentence, in words, the profile accepts before it
+	// flags one. A zero limit is off, which is the default.
+	SentenceLength SentenceLength `json:"sentenceLength"`
 	// CollapseSpaces collapses runs of two or more spaces into one and removes spaces
 	// and stray commas left before closing punctuation, like the debris an em-dash swap
 	// or a dropped word leaves behind. Runs at the start of a line are indentation and
@@ -73,6 +76,16 @@ type Profile struct {
 	// the default detection plus their own entries, and a two-line profile that
 	// silently disabled two hundred rules certified slop through CI.
 	Standalone bool `json:"standalone"`
+}
+
+// SentenceLength holds the word limits for one sentence. A step is a sentence inside a
+// Markdown list item, where an instruction belongs, and a description is any other prose
+// sentence. The limits carry no score weight unless a profile weighs the "length" class.
+type SentenceLength struct {
+	// Step is the most words a sentence in a list item may hold, or 0 for no limit.
+	Step int `json:"step"`
+	// Description is the most words any other prose sentence may hold, or 0 for no limit.
+	Description int `json:"description"`
 }
 
 // DefaultProfile returns the built-in profile that targets common AI tells.

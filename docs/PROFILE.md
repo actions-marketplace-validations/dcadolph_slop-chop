@@ -24,6 +24,7 @@ profile, see [Your voice](VOICE.md).
 - [dialect](#dialect)
 - [collapseSpaces and splitSemicolons](#collapsespaces-and-splitsemicolons)
 - [tone](#tone)
+- [sentenceLength](#sentencelength)
 - [Presets](#presets)
 - [Ignore directives](#ignore-directives)
 - [A full example](#a-full-example)
@@ -78,6 +79,7 @@ unset value. Turning a default cleanup off takes a standalone profile.
 | `collapseSpaces`  | boolean             | yes      | Fold repeated spaces and tidy punctuation.    |
 | `splitSemicolons` | boolean             | yes      | Turn a joining semicolon into two sentences.  |
 | `tone`            | array of strings    | n/a      | Notes the rewrite pass feeds to the model.    |
+| `sentenceLength`  | object              | no       | Flag a sentence over a word limit.            |
 | `standalone`      | boolean             | n/a      | Replace the default profile instead of extending it. |
 
 ## charReplace
@@ -219,10 +221,10 @@ word the default profile flags but that you have a reason to keep in one project
 
 How much a finding adds to the score's tell density. A key is an exact rule name, like
 `char:—` or `word:robust`, or a rule class, the part before the colon: `word`, `phrase`,
-`structural`, `char`, `regex`, or `drop`. The cleanup rules with no colon in their name
-share the class `tidy`. An exact name wins over its class, and both win over the built-in
-defaults: structural tells count 2, typography swaps and cleanups count 0, and everything
-else counts 1. Findings themselves never change, and neither does what `fix` rewrites.
+`structural`, `char`, `regex`, `drop`, or `length`. The cleanup rules with no colon in
+their name share the class `tidy`. An exact name wins over its class, and both win over the
+built-in defaults: structural tells count 2, typography swaps, cleanups, and sentence
+length count 0, and everything else counts 1. Findings themselves never change, and neither does what `fix` rewrites.
 Only the score moves.
 
 ```json
@@ -301,6 +303,31 @@ model so the output sounds like you.
 }
 ```
 
+## sentenceLength
+
+The longest sentence, in words, the profile accepts before it flags one. `step` is the
+limit for a sentence inside a Markdown list item, where an instruction lives, and
+`description` is the limit for any other prose sentence. A limit of `0` or a missing one
+is off, which is the default.
+
+```json
+{
+  "sentenceLength": {
+    "step": 20,
+    "description": 25
+  }
+}
+```
+
+A long sentence is flagged as `length:step` or `length:description` with the whole
+sentence as the match. It is never rewritten, since only the writer knows where to split
+it. Headings, table rows, and code are not counted, an inline code span or a bare URL
+counts as one word, and a link counts its visible words only.
+
+The `length` class weighs 0, so these findings never move the score and do not fail
+`check` unless you pass `--strict`. To make them fail `check`, give the class a weight:
+`"scoreWeights": {"length": 1}`. The `procedure` preset sets the limits above.
+
 ## Presets
 
 A preset is a built-in profile you overlay with `--preset`. It adds a curated pack of rules
@@ -324,6 +351,7 @@ The packs that ship:
 | `marketing`  | Swaps for launch-copy words like `bespoke` and `curated`.                     |
 | `no-dashes`  | Converts every dash standing in for an em-dash to a comma: ` - `, ` -- `, and the typed `word--word`. Compound words keep their hyphens. |
 | `plain`      | A general jargon-to-plain map for everyday prose.                             |
+| `procedure`  | Flags a sentence over 20 words in a list item and over 25 words anywhere else, the limits Simplified Technical English sets for procedures and descriptions. No rewrites and no score weight. See [sentenceLength](#sentencelength). |
 | `typography` | Keeps typeset characters as they are: em- and en-dashes, curly quotes, and ellipses stay while the word, phrase, and structure rules still run. For published or professionally typeset text. |
 
 The default profile flags words like `leverage` and `robust` but leaves them in place,

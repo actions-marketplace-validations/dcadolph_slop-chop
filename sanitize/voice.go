@@ -1,6 +1,7 @@
 package sanitize
 
 import (
+	"cmp"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -114,6 +115,9 @@ func (p Profile) Overlay(top Profile) Profile {
 	if top.Dialect != "" {
 		p.Dialect = top.Dialect
 	}
+	// A sentence length limit set on top wins, and zero on top means unset.
+	p.SentenceLength.Step = cmp.Or(top.SentenceLength.Step, p.SentenceLength.Step)
+	p.SentenceLength.Description = cmp.Or(top.SentenceLength.Description, p.SentenceLength.Description)
 	// Booleans take the union: an extending profile can switch a feature on but not
 	// silently off, since false is also the unset value. Turning a default off takes a
 	// standalone profile.

@@ -425,7 +425,7 @@ with `--profile`, or drop a `.slop-chop.json` in the repo and it gets picked up 
 own from any directory under it. With neither, a built-in default runs.
 
 Presets are curated packs you overlay with `--preset`. The built-in packs are `cleaver`,
-`plain`, `corporate`, `academic`, `marketing`, `no-dashes`, and `typography`. `cleaver`
+`plain`, `corporate`, `academic`, `marketing`, `no-dashes`, `typography`, and `procedure`. `cleaver`
 is the strongest cut: the default profile only flags buzzwords like `leverage` and
 `robust`, and `cleaver` rewrites them to plain words, which is what the web app ships
 switched on. `--preset plain`
@@ -433,7 +433,9 @@ turns corporate phrasing into plain English on top of whatever profile you alrea
 and the others target the stock phrasing of their own worlds. The last two set dash
 policy: `no-dashes` converts every dash posing as an em-dash to a comma, and `typography`
 keeps typeset dashes, curly quotes, and ellipses for text where they are deliberate.
-Overlay more than one with a comma: `--preset corporate,plain`.
+`procedure` is for instructions: it flags a sentence over 20 words in a list item and over
+25 words elsewhere, and like a cleanup it carries no score weight, so add `--strict` to fail
+on it. Overlay more than one with a comma: `--preset corporate,plain`.
 
 [docs/PROFILE.md](docs/PROFILE.md) is the full reference: every field, the presets, the
 spelling dialects, the allow list, and the inline ignore directives.

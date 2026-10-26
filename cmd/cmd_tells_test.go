@@ -72,6 +72,8 @@ func TestTellsMarkdown(t *testing.T) {
 		WantSub: "### cleaver",
 	}, { // Test 7: Buzzwords are inline code so the page passes its own check.
 		WantSub: "`robust`",
+	}, { // Test 8: A preset's sentence length limits are spelled out.
+		WantSub: "Flags a sentence in a list item over 20 words and any other prose sentence over 25 words.",
 	}}
 	for testNum, test := range tests {
 		t.Run(fmt.Sprintf("test %d", testNum), func(t *testing.T) {

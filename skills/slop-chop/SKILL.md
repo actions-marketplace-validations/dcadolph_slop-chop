@@ -118,10 +118,12 @@ slop-chop fix --profile myprofile.json notes.md  # your own cut list
 ```
 
 Dialects: `american`, `british`. Presets shipped: `cleaver`, `plain`, `corporate`,
-`academic`, `marketing`, `no-dashes`, `typography`. `cleaver` is the strongest cut:
-the default profile only flags buzzwords like `leverage`, and `cleaver` rewrites
-them. Overlay several with a comma. A profile is a JSON file listing characters,
-phrases, words, regexes, structural `flagPatterns`, an allow list, and switches.
+`academic`, `marketing`, `no-dashes`, `typography`, `procedure`. `procedure` flags
+sentences over 20 words in a list item and 25 elsewhere, with no score weight.
+`cleaver` is the strongest cut: the default profile only flags buzzwords like
+`leverage`, and `cleaver` rewrites them. Overlay several with a comma. A profile is
+a JSON file listing characters, phrases, words, regexes, structural `flagPatterns`,
+an allow list, and switches.
 When `--profile` is not set and a `.slop-chop.json` file sits in the working
 directory, that profile is used instead of the built-in one, so a repo can pin
 its own style.
