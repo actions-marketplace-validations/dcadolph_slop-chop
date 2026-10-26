@@ -84,31 +84,6 @@ function boot() {
   return ready;
 }
 
-// dedupe returns the array with duplicates dropped, order kept.
-function dedupe(arr) {
-  return [...new Set(arr)];
-}
-
-// voiceProfile folds a voice of keep, prefer, and avoid lists into the base profile, the
-// same mapping every other surface uses: keep into allow, avoid into blockWords, prefer into
-// word or phrase swaps with the voice winning.
-function voiceProfile(base, voice) {
-  if (!voice) return base;
-  const wordReplace = { ...base.wordReplace };
-  const phraseReplace = { ...base.phraseReplace };
-  for (const [from, to] of Object.entries(voice.prefer || {})) {
-    if (String(from).trim().split(/\s+/).length === 1) wordReplace[from] = to;
-    else phraseReplace[from] = to;
-  }
-  return {
-    ...base,
-    wordReplace,
-    phraseReplace,
-    allow: dedupe([...(base.allow || []), ...(voice.keep || [])]),
-    blockWords: dedupe([...(base.blockWords || []), ...(voice.avoid || [])]),
-  };
-}
-
 // json wraps a body as a JSON response with CORS.
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -214,9 +189,9 @@ async function badge(url, defaults) {
 // engineChop runs one text through the engine. A throw means the Go runtime died, which a
 // panic surfaces as "Go program has already exited", so the cached boot is dropped and the
 // result is marked died so callers can answer 500 rather than 400.
-function engineChop(text, profile, presets) {
+function engineChop(text, profile, presets, voice) {
   try {
-    return JSON.parse(globalThis.slopChop(JSON.stringify({ text, profile, presets })));
+    return JSON.parse(globalThis.slopChop(JSON.stringify({ text, profile, presets, voice })));
   } catch (err) {
     ready = null;
     return { error: "engine error: " + (err && err.message ? err.message : String(err)), died: true };
@@ -237,7 +212,7 @@ function chop(body, defaults) {
     return json({ error: "text is required" }, 400);
   }
   const base = body.profile && typeof body.profile === "object" ? body.profile : defaults;
-  const res = engineChop(text, voiceProfile(base, body.voice), body.presets || ["cleaver"]);
+  const res = engineChop(text, base, body.presets || ["cleaver"], body.voice);
   if (res.died) return json({ error: res.error }, 500);
   if (res.error) return json({ error: res.error }, 400);
   return json(res);

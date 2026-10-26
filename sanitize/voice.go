@@ -88,7 +88,7 @@ func (v Voice) asProfile() Profile {
 }
 
 // WithVoice returns p with the voice layered on top. Prefer swaps win over p's own maps, and
-// keep and avoid union into Allow and BlockWords. Because compile applies the allow set to
+// keep and avoid union into Allow and BlockAlways. Because compile applies the allow set to
 // every rule, a kept word is skipped by every swap and block, so keep beats a preset without
 // deleting the preset's entries. An empty voice returns p unchanged.
 func (p Profile) WithVoice(v Voice) Profile {
