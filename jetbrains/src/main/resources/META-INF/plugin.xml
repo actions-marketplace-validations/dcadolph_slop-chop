@@ -8,7 +8,8 @@
         plugin runs the local <code>slop-chop</code> binary as a language server through LSP4IJ:
         tells surface as diagnostics. In Markdown and plain text a code action chops the document
         in place. In a source file only comment text is read and each fixable tell gets its own
-        quick fix. Install the binary and put it on your PATH first
+        quick fix. Settings, Tools, slop-chop turns comment checking off. Install the binary and
+        put it on your PATH first
         (<code>brew install dcadolph/tap/slop-chop</code> or
         <code>go install github.com/dcadolph/slop-chop@latest</code>). See
         <a href="https://slop-chop.com">slop-chop.com</a>.
@@ -16,6 +17,13 @@
 
     <depends>com.intellij.modules.platform</depends>
     <depends>com.redhat.devtools.lsp4ij</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <applicationConfigurable parentId="tools"
+                                 instance="com.slopchop.jetbrains.SlopChopConfigurable"
+                                 id="com.slopchop.jetbrains.settings"
+                                 displayName="slop-chop"/>
+    </extensions>
 
     <extensions defaultExtensionNs="com.redhat.devtools.lsp4ij">
         <server id="slopChop"
