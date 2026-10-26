@@ -35,6 +35,23 @@ type chopRequest struct {
 	// Presets names built-in presets merged on top, with the profile winning on any
 	// conflict, matching the CLI's --preset flag.
 	Presets []string `json:"presets"`
+	// Voice is the personal layer, applied over the presets the way the CLI applies a voice
+	// file, so every caller folds it with the engine's one mapping rather than its own copy.
+	Voice sanitize.Voice `json:"voice"`
+}
+
+// profile resolves the request into the profile to run: the given profile, the presets
+// merged under it, and then the voice on top.
+func (r chopRequest) profile() (sanitize.Profile, error) {
+	p := r.Profile
+	if len(r.Presets) > 0 {
+		merged, err := sanitize.ApplyPresets(p, r.Presets...)
+		if err != nil {
+			return sanitize.Profile{}, err
+		}
+		p = merged
+	}
+	return p.WithVoice(r.Voice), nil
 }
 
 // chopResult is what slopChop returns, encoded as JSON.
@@ -85,13 +102,9 @@ func chop(_ js.Value, args []js.Value) any {
 	if err := json.Unmarshal([]byte(args[0].String()), &req); err != nil {
 		return errJSON(errors.Join(ErrRequest, err))
 	}
-	profile := req.Profile
-	if len(req.Presets) > 0 {
-		merged, err := sanitize.ApplyPresets(profile, req.Presets...)
-		if err != nil {
-			return errJSON(err)
-		}
-		profile = merged
+	profile, err := req.profile()
+	if err != nil {
+		return errJSON(err)
 	}
 	s, err := sanitize.New(profile)
 	if err != nil {
@@ -129,13 +142,9 @@ func scoreOnly(_ js.Value, args []js.Value) any {
 	if err := json.Unmarshal([]byte(args[0].String()), &req); err != nil {
 		return errJSON(errors.Join(ErrRequest, err))
 	}
-	profile := req.Profile
-	if len(req.Presets) > 0 {
-		merged, err := sanitize.ApplyPresets(profile, req.Presets...)
-		if err != nil {
-			return errJSON(err)
-		}
-		profile = merged
+	profile, err := req.profile()
+	if err != nil {
+		return errJSON(err)
 	}
 	s, err := sanitize.New(profile)
 	if err != nil {

@@ -85,6 +85,10 @@ jobs:
       # two must report the same findings at the same offsets and chop to the same text.
       - name: The VS Code extension's bundled engine must match the binary
         run: node --test vscode/engine.test.js
+      # The npm package hands a voice to the engine, so it must chop and score with a voice
+      # the way the binary does with the same voice file.
+      - name: The npm package must fold a voice the way the binary does
+        run: node --test npm/index.test.js
       - name: Every shipped surface must carry the same version
         run: make check-versions
       # Share the compiled binary so the check jobs need no Go toolchain, which keeps them off
