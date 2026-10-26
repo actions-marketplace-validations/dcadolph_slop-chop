@@ -282,6 +282,7 @@ any conflict. The web app ships with the cleaver preset switched on.
 		writeMarkdownSwaps(b, "####", "Word swaps", "", pack.WordReplace)
 		writeMarkdownSwaps(b, "####", "Phrase swaps", "", pack.PhraseReplace)
 		writeMarkdownSwaps(b, "####", "Character swaps", "", pack.CharReplace)
+		writeMarkdownSwaps(b, "####", "Regex swaps", "", pack.RegexReplace)
 		if len(pack.BlockWords) > 0 {
 			sorted := slices.Sorted(slices.Values(pack.BlockWords))
 			quoted := make([]string, 0, len(sorted))
