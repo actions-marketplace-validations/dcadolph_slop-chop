@@ -1,14 +1,20 @@
-/* slop-chop for VS Code. Runs the local slop-chop binary over Markdown, plain text, commit
+/* slop-chop for VS Code. Runs the slop-chop engine over Markdown, plain text, commit
    messages, and the comments in source files: tells show as diagnostics as you type, each one
    has a quick fix, and a command chops the document in place. Prose is rewritten whole. Source
    files are never reformatted: only the fixable tells inside their comments change, and the
-   code is never read. Zero dependencies and no build step; the binary picks up your voice
-   and profile the same way it does on the command line. */
+   code is never read. The engine ships inside the extension as wasm and picks up your voice
+   and the nearest .slop-chop.json the way the command line does. Setting slop-chop.path runs
+   that binary instead. Zero dependencies. */
 "use strict";
 
 const vscode = require("vscode");
+const path = require("path");
 const { execFile } = require("child_process");
+const engine = require("./engine");
 const { byteToIndex, editsFor } = require("./fixes");
+
+// ENGINE_DIR holds the wasm engine and Go's runtime shim, staged by make vscode.
+const ENGINE_DIR = path.join(__dirname, "engine");
 
 // LANGUAGES is the set of prose documents the extension watches.
 const LANGUAGES = ["markdown", "plaintext", "git-commit"];
@@ -59,23 +65,62 @@ function kindOf(doc) {
   return null;
 }
 
-// checkArgs builds the check command line for a document, naming the file type for source.
-function checkArgs(doc, kind) {
-  const args = ["check", "--json"];
-  if (kind === "code") args.push("--as", CODE_LANGUAGES[doc.languageId]);
-  return args;
+// docDir returns where project file discovery starts for a document: its own folder for a
+// file on disk, else the first workspace folder, else null for no project file.
+function docDir(doc) {
+  if (doc.uri.scheme === "file") return path.dirname(doc.uri.fsPath);
+  const folders = vscode.workspace.workspaceFolders;
+  return folders && folders.length ? folders[0].uri.fsPath : null;
 }
 
-// run feeds text to one slop-chop subcommand and resolves with stdout. check exits 1 on
-// findings, which is a normal answer here, not a failure.
-function run(args, text) {
-  const cfg = vscode.workspace.getConfiguration("slop-chop");
-  const bin = cfg.get("path") || "slop-chop";
-  const preset = cfg.get("preset");
+// presetNames splits the preset setting the way the --preset flag splits its value.
+function presetNames() {
+  const preset = vscode.workspace.getConfiguration("slop-chop").get("preset") || "";
+  return preset
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+}
+
+// binaryPath returns the binary the user chose to run instead of the bundled engine, or ""
+// for the bundled engine.
+function binaryPath() {
+  return vscode.workspace.getConfiguration("slop-chop").get("path") || "";
+}
+
+// check resolves with the findings report for a document's text, naming the file type for
+// source so only its comments are read.
+async function check(doc, kind, text) {
+  const as = kind === "code" ? CODE_LANGUAGES[doc.languageId] : "";
+  const bin = binaryPath();
+  if (!bin) return engine.run(ENGINE_DIR, text, docDir(doc), { as, presets: presetNames() });
+  const args = ["check", "--json"];
+  if (as) args.push("--as", as);
+  return JSON.parse(await runBinary(bin, args, text, docDir(doc)));
+}
+
+// fixProse resolves with the chopped text of a prose document.
+async function fixProse(doc, text) {
+  const bin = binaryPath();
+  if (!bin) {
+    const opts = { fix: true, presets: presetNames() };
+    const res = await engine.run(ENGINE_DIR, text, docDir(doc), opts);
+    return res.output ?? "";
+  }
+  return runBinary(bin, ["fix"], text, docDir(doc));
+}
+
+// runBinary feeds text to one subcommand of the user's binary and resolves with stdout. It
+// runs in the document's folder so the binary discovers the same project file the bundled
+// engine would. check exits 1 on findings, which is a normal answer here, not a failure.
+function runBinary(bin, args, text, cwd) {
   const full = [...args];
-  if (preset) full.push("--preset", preset);
+  const presets = presetNames();
+  if (presets.length) full.push("--preset", presets.join(","));
+  const opts = { maxBuffer: 16 * 1024 * 1024 };
+  if (cwd) opts.cwd = cwd;
   return new Promise((resolve, reject) => {
-    const child = execFile(bin, full, { maxBuffer: 16 * 1024 * 1024 }, (err, stdout) => {
+    const child = execFile(bin, full, opts, (err, stdout) => {
       if (err && err.code !== 1) {
         reject(new Error(String(err.message || err)));
         return;
@@ -143,16 +188,16 @@ function activate(context) {
     const version = doc.version;
     const text = doc.getText();
     try {
-      const out = await run(checkArgs(doc, kind), text);
+      const report = await check(doc, kind, text);
       // An edit landed while the check ran: its findings are for the old text, and that edit
       // scheduled its own refresh, so drop these instead of painting offsets onto new text.
       if (doc.isClosed || doc.version !== version) return;
-      const report = JSON.parse(out);
       const { diagnostics, replacements } = toDiagnostics(doc, text, report.findings || []);
       collection.set(doc.uri, diagnostics);
       replacementsByDoc.set(key, replacements);
     } catch (err) {
-      // A missing binary should say so once per session, not on every keystroke.
+      // A missing binary or a broken profile should say so once per session, not on every
+      // keystroke.
       collection.delete(doc.uri);
       replacementsByDoc.delete(key);
       if (!activate.warned) {
@@ -197,9 +242,8 @@ function activate(context) {
   vscode.workspace.textDocuments.forEach(refresh);
 
   // chop rewrites the whole document with the fix pass. Only prose goes through it.
-  async function chop(doc) {
-    const out = await run(["fix"], doc.getText());
-    return out;
+  function chop(doc) {
+    return fixProse(doc, doc.getText());
   }
 
   // chopComments applies every fixable tell found inside a source file's comments, as one
@@ -208,7 +252,7 @@ function activate(context) {
     const doc = editor.document;
     const version = doc.version;
     const text = doc.getText();
-    const report = JSON.parse(await run(checkArgs(doc, kind), text));
+    const report = await check(doc, kind, text);
     if (doc.version !== version) {
       vscode.window.showInformationMessage(
         "slop-chop: the document changed while chopping; nothing applied",

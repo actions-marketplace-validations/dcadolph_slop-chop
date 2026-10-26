@@ -26,6 +26,27 @@ func TestIgnoreDirectives(t *testing.T) {
 	}, { // Test 3: A next-line directive with content on its own line still flags that line.
 		In:        "robust here <!-- slop-chop-ignore-next-line -->\nrobust skipped",
 		WantLines: []int{1},
+	}, { // Test 4: A next-line directive inside inline code silences nothing.
+		In:        "Write `<!-- slop-chop-ignore-next-line -->` above it.\nrobust flagged",
+		WantLines: []int{2},
+	}, { // Test 5: A same-line directive inside inline code silences nothing.
+		In:        "a robust plan `slop-chop-ignore`",
+		WantLines: []int{1},
+	}, { // Test 6: A directive in a fenced block silences nothing after the fence.
+		In:        "```\n<!-- slop-chop-ignore-next-line -->\n```\nrobust flagged",
+		WantLines: []int{4},
+	}, { // Test 7: A real directive beside an unrelated code span still works.
+		In:        "a robust plan with `code` <!-- slop-chop-ignore -->\nrobust flagged",
+		WantLines: []int{2},
+	}, { // Test 8: The next-line form quoted in code and the plain form in prose act as plain.
+		In:        "robust `slop-chop-ignore-next-line` <!-- slop-chop-ignore -->\nrobust flagged",
+		WantLines: []int{2},
+	}, { // Test 9: The plain form quoted in code and the next-line form in prose act as next-line.
+		In:        "robust `slop-chop-ignore` <!-- slop-chop-ignore-next-line -->\nrobust skipped",
+		WantLines: []int{1},
+	}, { // Test 10: An unclosed backtick does not hide a directive that follows it.
+		In:        "a robust ` plan <!-- slop-chop-ignore -->\nrobust flagged",
+		WantLines: []int{2},
 	}}
 
 	s := mustSanitizer(t)

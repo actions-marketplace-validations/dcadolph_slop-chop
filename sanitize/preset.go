@@ -1,6 +1,7 @@
 package sanitize
 
 import (
+	"cmp"
 	"embed"
 	"encoding/json"
 	"fmt"
@@ -59,7 +60,8 @@ func PresetNames() []string {
 // withPreset returns p with pack merged in. Maps take pack's entries where p has none, and
 // slices take the union, so p always wins on a conflict. Booleans, tone, and dialect stay
 // as p has them, since a preset adds rules rather than forcing settings. Flag patterns
-// merge like any other map, so a preset can carry a structural rule of its own.
+// merge like any other map, so a preset can carry a structural rule of its own. A sentence
+// length limit fills only a limit p leaves at zero.
 func (p Profile) withPreset(pack Profile) Profile {
 	p.CharReplace = mergeMap(p.CharReplace, pack.CharReplace)
 	p.PhraseReplace = mergeMap(p.PhraseReplace, pack.PhraseReplace)
@@ -69,6 +71,9 @@ func (p Profile) withPreset(pack Profile) Profile {
 	p.BlockWords = mergeSlice(p.BlockWords, pack.BlockWords)
 	p.BlockAlways = mergeSlice(p.BlockAlways, pack.BlockAlways)
 	p.Allow = mergeSlice(p.Allow, pack.Allow)
+	limit, add := &p.SentenceLength, pack.SentenceLength
+	limit.Step = cmp.Or(limit.Step, add.Step)
+	limit.Description = cmp.Or(limit.Description, add.Description)
 	return p
 }
 

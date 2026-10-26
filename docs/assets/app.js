@@ -385,11 +385,10 @@
         },
         regexReplace: { ...(base.regexReplace || {}), ...parsePairs(controls.regexSwaps.value) },
         flagPatterns: { ...(base.flagPatterns || {}), ...parsePairs(controls.flagPatterns.value) },
-        blockWords: dedupe([
-          ...(base.blockWords || []),
-          ...v.avoid,
-          ...parseLines(controls.blockWords.value),
-        ]),
+        blockWords: dedupe([...(base.blockWords || []), ...parseLines(controls.blockWords.value)]),
+        // A voice's avoid list flags a word however it is capitalized, the blockAlways rule
+        // the CLI maps a voice file's avoid list to.
+        blockAlways: dedupe([...(base.blockAlways || []), ...v.avoid]),
         allow: dedupe([...(base.allow || []), ...v.keep, ...parseLines(controls.allow.value)]),
         collapseSpaces: controls.collapseSpaces.checked,
         splitSemicolons: controls.splitSemicolons.checked,
@@ -705,7 +704,10 @@
       $("sc-pop-value").textContent = s.value;
       $("sc-pop-tells").textContent = String(s.tells);
       $("sc-pop-words").textContent = String(s.words);
-      $("sc-pop-density").textContent = s.tellsPer100 + " tells per 100 words";
+      $("sc-pop-density").textContent =
+        s.density > 0
+          ? "adds " + s.density + " for " + s.tellsPer100 + " tells per 100 words"
+          : s.tellsPer100 + " tells per 100 words, adding nothing";
       /* Density is a rate, so a long document dilutes the same evidence. The evidence
          component is what the rate misses, and showing it is what explains why a page
          and a sentence carrying the same tells do not score the same. */
@@ -722,6 +724,7 @@
           : s.cadence > 0
             ? "flat (cv " + s.cadenceCv + "), adding " + s.cadence + " to the score"
             : "varied (cv " + s.cadenceCv + ")";
+      renderHabits(s);
       // The after-chop score sits beside the before score, so the improvement is visible.
       const after = res.scoreAfter;
       if (after) {
@@ -733,6 +736,58 @@
       } else {
         scoreAfter.hidden = true;
       }
+    }
+
+    /* HABITS are the register parts of the score: habits scored by their rate rather than
+       tells counted one by one. Each shows as its own row only when it added points, and the
+       rest share one line, so a clean text keeps a short breakdown. */
+    const HABITS = [
+      ["Hedging", "hedging", "hedge words like may and perhaps"],
+      ["Weighing", "weighing", "on-the-one-hand balancing that never lands"],
+      ["Drumbeat", "drumbeat", "short sentences landing on a bare \"that's\""],
+      ["Tails", "tails", "sentences closing on an -ing clause"],
+      ["Clauses", "clauses", "a comma in nearly every sentence"],
+    ];
+
+    /* renderHabits fills the habit rows and the total line. Every part the engine adds into
+       the score has a row here, so the rows explain the whole number. Parts are rounded one
+       by one, and the score caps at 100, so the total line appears only when the rows do not
+       add up to the score on their own, and says why. */
+    function renderHabits(s) {
+      const quietRow = $("sc-pop-quiet-row");
+      quietRow.parentNode.querySelectorAll(".sc-pop-habit").forEach((el) => el.remove());
+      const quiet = [];
+      let sum = (s.density || 0) + (s.evidence || 0) + (s.cadence || 0);
+      for (const [label, key, what] of HABITS) {
+        const pts = s[key] || 0;
+        sum += pts;
+        if (pts <= 0) {
+          quiet.push(label.toLowerCase());
+          continue;
+        }
+        const row = document.createElement("div");
+        row.className = "sc-pop-habit";
+        const dt = document.createElement("dt");
+        dt.textContent = label;
+        const dd = document.createElement("dd");
+        dd.textContent = "adds " + pts + " for " + what;
+        row.append(dt, dd);
+        quietRow.before(row);
+      }
+      quietRow.hidden = quiet.length === 0;
+      $("sc-pop-quiet").textContent = "nothing from " + listWords(quiet);
+      const totalRow = $("sc-pop-total-row");
+      totalRow.hidden = sum === s.value;
+      $("sc-pop-total").textContent =
+        sum > s.value && s.value === 100
+          ? "the parts add to " + sum + ", capped at 100"
+          : "the parts add to " + sum + ", rounded one by one";
+    }
+
+    /* listWords joins words as prose: "a", "a or b", "a, b, or c". */
+    function listWords(words) {
+      if (words.length < 3) return words.join(" or ");
+      return words.slice(0, -1).join(", ") + ", or " + words[words.length - 1];
     }
 
     function setScorePop(open) {
@@ -763,6 +818,7 @@
           case: "Your voice fixes how this word is capitalized.",
           regex: "One of your own regex rules.",
           spelling: "The dialect setting enforces this spelling.",
+          length: "A sentence longer than the profile's sentence length limit. It carries no score weight.",
         }[cls] || "House-style cleanup. It carries no score weight.";
       const action =
         f.replacement === undefined || f.replacement === null

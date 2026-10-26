@@ -35,11 +35,6 @@ function parsePairs(text) {
   return out;
 }
 
-// dedupe returns the array with duplicates dropped, order kept.
-function dedupe(arr) {
-  return [...new Set(arr)];
-}
-
 // replaceAll swaps the whole editor contents while keeping the scroll position and a
 // clamped cursor, so a chop does not jump the view back to the top of the note.
 function replaceAll(editor, output) {
@@ -117,22 +112,14 @@ class SlopChopPlugin extends Plugin {
     return this.settings.preset ? [this.settings.preset] : [];
   }
 
-  // voiceProfile folds the saved voice into the default profile: keep into allow, avoid into
-  // blockWords, and prefer into word or phrase swaps. Voice wins over the presets.
-  voiceProfile() {
-    const base = this.defaults;
-    const wordReplace = Object.assign({}, base.wordReplace);
-    const phraseReplace = Object.assign({}, base.phraseReplace);
-    for (const [from, to] of Object.entries(parsePairs(this.settings.voicePrefer))) {
-      if (from.trim().split(/\s+/).length === 1) wordReplace[from] = to;
-      else phraseReplace[from] = to;
-    }
-    return Object.assign({}, base, {
-      wordReplace,
-      phraseReplace,
-      allow: dedupe([...(base.allow || []), ...parseLines(this.settings.voiceKeep)]),
-      blockWords: dedupe([...(base.blockWords || []), ...parseLines(this.settings.voiceAvoid)]),
-    });
+  // voice returns the saved voice as the engine's {keep, prefer, avoid}, which the engine
+  // folds over the presets the way the CLI folds a voice file.
+  voice() {
+    return {
+      keep: parseLines(this.settings.voiceKeep),
+      prefer: parsePairs(this.settings.voicePrefer),
+      avoid: parseLines(this.settings.voiceAvoid),
+    };
   }
 
   // chop runs the engine over text and returns the cleaned output with before and after
@@ -146,7 +133,12 @@ class SlopChopPlugin extends Plugin {
         return { error: "engine not loaded: " + ((err && err.message) || err) };
       }
     }
-    const req = JSON.stringify({ text, profile: this.voiceProfile(), presets: this.presets() });
+    const req = JSON.stringify({
+      text,
+      profile: this.defaults,
+      presets: this.presets(),
+      voice: this.voice(),
+    });
     const res = JSON.parse(globalThis.slopChop(req));
     if (res.error) return { error: res.error };
     return {

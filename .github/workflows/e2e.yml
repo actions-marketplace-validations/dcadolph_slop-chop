@@ -30,21 +30,23 @@ on:
 
 jobs:
   browsers:
-    runs-on: ubuntu-latest
+    # Playwright's WebKit build links against the system ICU of one Ubuntu release, and on
+    # 26.04 it fails to load libicudata.so.74, so the runner stays on that release.
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
       - run: make wasm
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.x'
       - run: pip install mkdocs-material
       - run: mkdocs build
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
@@ -52,7 +54,7 @@ jobs:
       - run: npm ci
         working-directory: e2e
       - name: Cache Playwright browsers
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}

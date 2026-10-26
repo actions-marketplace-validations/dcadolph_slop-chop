@@ -46,7 +46,7 @@ async function main() {
   if (!(await page.isVisible("#sc-drawer"))) throw new Error("drawer did not open");
   const presetCount = await page.locator(".sc-preset").count();
   log("preset checkboxes:", presetCount);
-  if (presetCount !== 7) throw new Error("expected seven presets, got " + presetCount);
+  if (presetCount !== 8) throw new Error("expected eight presets, got " + presetCount);
 
   // Step 4: dialect toggle changes behavior end to end.
   await page.fill("#sc-in", "We optimise the colour and behaviour of the system.");

@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "com.slopchop"
-version = "0.54.1"
+version = "0.55.0"
 
 repositories {
     mavenCentral()
@@ -38,9 +38,9 @@ intellijPlatform {
         }
         changeNotes = """
             <ul>
-              <li>Check source files: comments are read in Go, Python, TypeScript, and the other
-                  languages the command line reads.</li>
-              <li>Offer a quick fix per tell in source files.</li>
+              <li>A setting under Tools, slop-chop, turns comment checking in source files off.</li>
+              <li>The server runs in the project folder, so the project's .slop-chop.json
+                  applies.</li>
             </ul>
         """.trimIndent()
     }

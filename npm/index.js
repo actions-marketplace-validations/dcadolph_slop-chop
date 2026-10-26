@@ -33,36 +33,17 @@ function init() {
   return ready;
 }
 
-// parseVoice folds a voice of keep, prefer, and avoid lists into a profile: keep into allow,
-// avoid into blockWords, and each prefer entry into a word or phrase swap. The voice wins
-// over the base profile, and a kept term survives every rule.
-function parseVoice(base, voice) {
-  if (!voice) return base;
-  const wordReplace = { ...base.wordReplace };
-  const phraseReplace = { ...base.phraseReplace };
-  for (const [from, to] of Object.entries(voice.prefer || {})) {
-    if (String(from).trim().split(/\s+/).length === 1) wordReplace[from] = to;
-    else phraseReplace[from] = to;
-  }
-  return {
-    ...base,
-    wordReplace,
-    phraseReplace,
-    allow: [...new Set([...(base.allow || []), ...(voice.keep || [])])],
-    blockWords: [...new Set([...(base.blockWords || []), ...(voice.avoid || [])])],
-  };
-}
-
 // chop cleans text and returns {output, findings, score, scoreAfter}. Options: presets is a
 // list of built-in preset names (default ["cleaver"]), profile overrides the built-in default
-// profile, and voice is {keep, prefer, avoid} folded on top.
+// profile, and voice is {keep, prefer, avoid}, which the engine folds on top the way the CLI
+// folds a voice file.
 async function chop(text, opts = {}) {
   await init();
-  const base = opts.profile || defaults;
   const req = JSON.stringify({
     text,
-    profile: parseVoice(base, opts.voice),
+    profile: opts.profile || defaults,
     presets: opts.presets || ["cleaver"],
+    voice: opts.voice,
   });
   const res = JSON.parse(globalThis.slopChop(req));
   if (res.error) throw new Error(res.error);

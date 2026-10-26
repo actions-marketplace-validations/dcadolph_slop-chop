@@ -16,7 +16,8 @@ func lspCmd() *cobra.Command {
 and chop slop as you write. Tells become diagnostics, and the fix pass is offered as a
 "Chop the slop" code action and as document formatting. A source file is read as its
 comments, and each rewrite there is a quick fix of its own, with no chop or formatting that
-would touch the code. It uses the same profile, presets, and voice as the other commands.`,
+would touch the code. --code-comments=false leaves source files alone. It uses the same
+profile, presets, and voice as the other commands.`,
 		Args: cobra.NoArgs,
 		RunE: runLSP,
 	}
@@ -25,6 +26,7 @@ would touch the code. It uses the same profile, presets, and voice as the other 
 	f.AddFlag(&config.FlagDialect)
 	f.AddFlag(&config.FlagPreset)
 	f.AddFlag(&config.FlagVoice)
+	f.AddFlag(&config.FlagCodeComments)
 	return cmd
 }
 
@@ -34,5 +36,9 @@ func runLSP(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	return lsp.NewServer(s, cmd.InOrStdin(), cmd.OutOrStdout()).Run()
+	var opts []lsp.Option
+	if !config.CodeComments() {
+		opts = append(opts, lsp.ProseOnly())
+	}
+	return lsp.NewServer(s, cmd.InOrStdin(), cmd.OutOrStdout(), opts...).Run()
 }

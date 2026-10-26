@@ -72,6 +72,12 @@ func TestTellsMarkdown(t *testing.T) {
 		WantSub: "### cleaver",
 	}, { // Test 7: Buzzwords are inline code so the page passes its own check.
 		WantSub: "`robust`",
+	}, { // Test 8: A preset's sentence length limits are spelled out.
+		WantSub: "Flags a sentence in a list item over 20 words and any other prose sentence over 25 words.",
+	}, { // Test 9: A preset's regex swaps are listed, so the no-dashes section is not empty.
+		WantSub: "### no-dashes\n\n#### Regex swaps (2)\n",
+	}, { // Test 10: A regex swap shows its pattern and its replacement.
+		WantSub: "| `(\\p{L})--(\\p{L})` | `$1, $2` |",
 	}}
 	for testNum, test := range tests {
 		t.Run(fmt.Sprintf("test %d", testNum), func(t *testing.T) {
@@ -79,6 +85,14 @@ func TestTellsMarkdown(t *testing.T) {
 				t.Errorf("stdout missing %q", test.WantSub)
 			}
 		})
+	}
+	// Every preset section must say what the preset does, so a heading never sits directly
+	// above the next one.
+	for _, name := range sanitize.PresetNames() {
+		_, rest, ok := strings.Cut(stdout, "### "+name+"\n\n")
+		if !ok || strings.HasPrefix(rest, "### ") || strings.HasPrefix(rest, "## ") || rest == "" {
+			t.Errorf("preset %s has an empty section", name)
+		}
 	}
 	// The default profile carries the ordinal-adverb swaps, so the section must render
 	// with them in it.

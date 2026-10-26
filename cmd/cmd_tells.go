@@ -282,6 +282,7 @@ any conflict. The web app ships with the cleaver preset switched on.
 		writeMarkdownSwaps(b, "####", "Word swaps", "", pack.WordReplace)
 		writeMarkdownSwaps(b, "####", "Phrase swaps", "", pack.PhraseReplace)
 		writeMarkdownSwaps(b, "####", "Character swaps", "", pack.CharReplace)
+		writeMarkdownSwaps(b, "####", "Regex swaps", "", pack.RegexReplace)
 		if len(pack.BlockWords) > 0 {
 			sorted := slices.Sorted(slices.Values(pack.BlockWords))
 			quoted := make([]string, 0, len(sorted))
@@ -298,5 +299,22 @@ any conflict. The web app ships with the cleaver preset switched on.
 			}
 			fmt.Fprintf(b, "Allows %d words: %s\n\n", len(sorted), strings.Join(quoted, " "))
 		}
+		writeMarkdownLength(b, pack.SentenceLength)
 	}
+}
+
+// writeMarkdownLength prints a preset's sentence length limits, skipping a preset that sets
+// none.
+func writeMarkdownLength(b *strings.Builder, limit sanitize.SentenceLength) {
+	var parts []string
+	if limit.Step > 0 {
+		parts = append(parts, fmt.Sprintf("a sentence in a list item over %d words", limit.Step))
+	}
+	if limit.Description > 0 {
+		parts = append(parts, fmt.Sprintf("any other prose sentence over %d words", limit.Description))
+	}
+	if len(parts) == 0 {
+		return
+	}
+	fmt.Fprintf(b, "Flags %s. The flags carry no score weight.\n\n", strings.Join(parts, " and "))
 }

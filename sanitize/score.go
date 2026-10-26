@@ -61,6 +61,9 @@ type Score struct {
 	Density int `json:"density"`
 	// Hedging is the points a hedge-heavy register added to Value.
 	Hedging int `json:"hedging"`
+	// Weighing is the points the weighing register added to Value: every side presented
+	// and nothing chosen, read from the density of balance-and-defer connectors.
+	Weighing int `json:"weighing"`
 	// Cadence is the points a flat rhythm added to Value. Unlike a tell it cannot be
 	// swapped away, since escaping it means rewriting the sentences rather than looking
 	// up synonyms, and the attack harness measures that immunity directly. How well it
@@ -247,6 +250,7 @@ func (s *Sanitizer) Score(text string) Score {
 		Punchiness:     cadenceReport(punchiness(prose)),
 		Density:        int(math.Round(density)),
 		Hedging:        int(math.Round(hedging)),
+		Weighing:       int(math.Round(weighing)),
 		Drumbeat:       int(math.Round(drumbeat)),
 		Tails:          int(math.Round(tails)),
 		Clauses:        int(math.Round(clauses)),
@@ -305,8 +309,8 @@ func (s *Sanitizer) Weight(rule string) float64 {
 // tellWeight resolves the score weight for one finding by its rule name. An exact entry
 // in the profile's scoreWeights wins, then the rule's class, then the built-in default:
 // structural tells count double, since a stock sentence shape is stronger evidence than
-// one word, typography swaps and house-style cleanups count nothing, and everything else
-// counts one.
+// one word, typography swaps, house-style cleanups, and sentence length count nothing, and
+// everything else counts one.
 func (s *Sanitizer) tellWeight(rule string) float64 {
 	if w, ok := s.weights[rule]; ok {
 		return w
@@ -341,7 +345,7 @@ func defaultTellWeight(rule string) float64 {
 			return 1
 		}
 		return 0
-	case tidyRuleNames[rule]:
+	case tidyRuleNames[rule], lengthRule(rule):
 		return 0
 	}
 	return 1

@@ -548,6 +548,13 @@ Adds 16 buzzwords: `effortless` `game-changer` `guru` `hassle-free` `hidden gem`
 
 ### no-dashes
 
+#### Regex swaps (2)
+
+| From | To |
+| ---- | -- |
+| `(\p{Ll}) -{1,2} (\p{Ll})` | `$1, $2` |
+| `(\p{L})--(\p{L})` | `$1, $2` |
+
 ### plain
 
 #### Word swaps (24)
@@ -604,6 +611,10 @@ Adds 16 buzzwords: `effortless` `game-changer` `guru` `hassle-free` `hidden gem`
 | `with regard to` | `about` |
 
 Adds 25 buzzwords: `actionable` `bandwidth` `best practice` `boil the ocean` `circle back` `core competency` `deep dive` `deliverable` `deliverables` `double-click` `ideate` `learnings` `low-hanging fruit` `mission-critical` `move the needle` `north star` `operationalize` `paradigm` `synergies` `synergy` `table stakes` `thought leadership` `touch base` `value-add` `win-win`
+
+### procedure
+
+Flags a sentence in a list item over 20 words and any other prose sentence over 25 words. The flags carry no score weight.
 
 ### typography
 

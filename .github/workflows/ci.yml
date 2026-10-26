@@ -9,7 +9,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # The authorship guard below reads commit messages, which needs real history
           # rather than the single squashed commit a shallow clone gives.
@@ -25,7 +25,7 @@ jobs:
             exit 1
           fi
           echo "no co-author trailers in history"
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version: stable
       - run: go build -o slop-chop .
@@ -46,7 +46,7 @@ jobs:
             }
             END { exit fail }' coverage.txt
       - run: go tool cover -html=coverage.out -o coverage.html
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: coverage-report
           path: |
@@ -68,22 +68,32 @@ jobs:
           set -euo pipefail
           make obsidian
           make npm-package
+          make vscode
           # An empty variable in a recipe still runs, so the bundle can build from the
           # wrong bytes. Check the payload landed rather than trusting the exit code.
           test -s obsidian/dist/main.js
           grep -q "SLOP_WASM_B64_GZ" obsidian/dist/main.js
           test -s npm/engine/slop-chop.wasm
+          test -s vscode/engine/slop-chop.wasm
           # The MCP bundles are the artifact the registry points at, and nothing outside
           # the release built them either. A bundle that fails to build reaches a tag and
           # the registry entry names a file that was never attached.
           make mcpb
           test "$(ls dist/*.mcpb | wc -l)" -eq 6
           unzip -p dist/slop-chop-mcp_*_linux_amd64.mcpb manifest.json | grep -q '"type": "binary"'
+      # The extension runs the wasm engine in place of the binary, so on the same input the
+      # two must report the same findings at the same offsets and chop to the same text.
+      - name: The VS Code extension's bundled engine must match the binary
+        run: node --test vscode/engine.test.js
+      # The npm package hands a voice to the engine, so it must chop and score with a voice
+      # the way the binary does with the same voice file.
+      - name: The npm package must fold a voice the way the binary does
+        run: node --test npm/index.test.js
       - name: Every shipped surface must carry the same version
         run: make check-versions
       # Share the compiled binary so the check jobs need no Go toolchain, which keeps them off
       # setup-go, the heavier action whose download was the source of the flaky setup failures.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: slop-chop-binary
           path: slop-chop
@@ -92,11 +102,11 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # Pinned to the go directive rather than "stable". The linter parses the standard
       # library of whatever Go it runs on, so a runner that moves to a release the pinned
       # golangci-lint does not know yet crashes on stdlib source that is not ours.
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
       # Build golangci-lint from source with that Go so its build version is not older than
@@ -107,7 +117,7 @@ jobs:
   action-passes-clean:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Write a clean file
         run: printf 'a plain sentence that reads just fine\n' > clean.md
       - name: Action should pass on clean text
@@ -118,7 +128,7 @@ jobs:
   action-fixes-slop:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Write a slopful file
         run: printf 'In summary, a plan—and it works; it ships.\n' > dirty.md
       - name: Action should rewrite the file in place
@@ -141,7 +151,7 @@ jobs:
   action-gates-on-score:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Write a file with a whitespace tidy-up and no tells
         run: printf 'A plain sentence  with a double space.\n' > tidy.md
       - name: The default gate lists the tidy-up and lets it through
@@ -191,7 +201,7 @@ jobs:
   action-writes-sarif:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Write a file with tells
         run: printf 'We delve into a robust plan.\n' > dirty.md
       - name: The action writes a SARIF log
@@ -212,7 +222,7 @@ jobs:
   action-checks-pull-request:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: A clean title and body pass
         uses: ./
         with:
@@ -288,8 +298,8 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           name: slop-chop-binary
       - run: chmod +x slop-chop
@@ -300,7 +310,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: slop-chop-binary
       - run: chmod +x slop-chop

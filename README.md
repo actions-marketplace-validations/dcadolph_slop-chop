@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://slop-chop.com"><img src="https://img.shields.io/badge/try_it-slop--chop.com-9bcf1a" alt="Try it at slop-chop.com"></a>
-  <a href="https://github.com/dcadolph/slop-chop/releases/latest"><img src="https://img.shields.io/badge/release-v0.54.1-9bcf1a" alt="Latest release"></a>
+  <a href="https://github.com/dcadolph/slop-chop/releases/latest"><img src="https://img.shields.io/badge/release-v0.55.0-9bcf1a" alt="Latest release"></a>
   <a href="https://github.com/dcadolph/slop-chop/actions/workflows/ci.yml"><img src="https://github.com/dcadolph/slop-chop/actions/workflows/ci.yml/badge.svg" alt="ci status"></a>
   <a href="https://pkg.go.dev/github.com/dcadolph/slop-chop/sanitize"><img src="https://pkg.go.dev/badge/github.com/dcadolph/slop-chop/sanitize.svg" alt="Go reference"></a>
 </p>
@@ -228,8 +228,8 @@ jobs:
   slop:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: dcadolph/slop-chop@v0.54.1
+      - uses: actions/checkout@v7
+      - uses: dcadolph/slop-chop@v0.55.0
         with:
           files: docs/intro.md docs/guide.md
           # max: 25                   # optional, the score line
@@ -283,10 +283,10 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.head_ref }}
-      - uses: dcadolph/slop-chop@v0.54.1
+      - uses: dcadolph/slop-chop@v0.55.0
         with:
           files: docs/intro.md docs/guide.md
           mode: fix
@@ -313,8 +313,8 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: dcadolph/slop-chop@v0.54.1
+      - uses: actions/checkout@v7
+      - uses: dcadolph/slop-chop@v0.55.0
         with:
           files: docs/intro.md docs/guide.md
           sarif: slop-chop.sarif
@@ -347,8 +347,8 @@ jobs:
     if: github.event.pull_request.user.type != 'Bot'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: dcadolph/slop-chop@v0.54.1
+      - uses: actions/checkout@v7
+      - uses: dcadolph/slop-chop@v0.55.0
         with:
           pull-request: "true"
 ```
@@ -363,6 +363,10 @@ the repo's `.slop-chop.json` apply. Add `files` to check files in the same step,
 trigger. Code blocks and HTML comments are skipped, so a pull request template does not
 count against the author. To silence one line, the author puts a comment GitHub does not
 render above it: `<!-- slop-chop-ignore-next-line -->`.
+
+The Action installs Go with `actions/setup-go@v7`, which runs on Node 24. A self-hosted runner
+needs version 2.327.1 or newer. The setup step also sets `GOTOOLCHAIN=local` for the rest of
+the job, so later `go` commands in that job use the installed Go instead of downloading one.
 
 ## Use it as a Claude Code plugin
 
@@ -421,7 +425,7 @@ with `--profile`, or drop a `.slop-chop.json` in the repo and it gets picked up 
 own from any directory under it. With neither, a built-in default runs.
 
 Presets are curated packs you overlay with `--preset`. The built-in packs are `cleaver`,
-`plain`, `corporate`, `academic`, `marketing`, `no-dashes`, and `typography`. `cleaver`
+`plain`, `corporate`, `academic`, `marketing`, `no-dashes`, `typography`, and `procedure`. `cleaver`
 is the strongest cut: the default profile only flags buzzwords like `leverage` and
 `robust`, and `cleaver` rewrites them to plain words, which is what the web app ships
 switched on. `--preset plain`
@@ -429,7 +433,9 @@ turns corporate phrasing into plain English on top of whatever profile you alrea
 and the others target the stock phrasing of their own worlds. The last two set dash
 policy: `no-dashes` converts every dash posing as an em-dash to a comma, and `typography`
 keeps typeset dashes, curly quotes, and ellipses for text where they are deliberate.
-Overlay more than one with a comma: `--preset corporate,plain`.
+`procedure` is for instructions: it flags a sentence over 20 words in a list item and over
+25 words elsewhere, and like a cleanup it carries no score weight, so add `--strict` to fail
+on it. Overlay more than one with a comma: `--preset corporate,plain`.
 
 [docs/PROFILE.md](docs/PROFILE.md) is the full reference: every field, the presets, the
 spelling dialects, the allow list, and the inline ignore directives.

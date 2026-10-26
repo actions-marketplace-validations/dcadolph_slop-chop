@@ -86,48 +86,22 @@ func sanitizerFor(presetNames []string, dialect string) (*sanitize.Sanitizer, sa
 	if profilePath == "" {
 		profilePath = discoverProfile()
 	}
-	profile := sanitize.DefaultProfile()
-	var projectProfile sanitize.Profile
-	haveProject := false
+	layers := sanitize.Layers{Dialect: dialect, Presets: presetNames}
 	if profilePath != "" {
 		p, err := sanitize.LoadFile(profilePath)
 		if err != nil {
 			return nil, sanitize.Profile{}, err
 		}
-		// A profile extends the built-in default unless it says standalone. The
-		// two-line team file, allow one word and ban another, means the default
-		// detection plus those two decisions, not a profile of two rules.
-		if !p.Standalone {
-			p = sanitize.DefaultProfile().Overlay(p)
-		}
-		profile = p
-		projectProfile = p
-		haveProject = true
+		layers.Project = &p
 	}
-	// The caller's dialect overrides the profile's own. Left unset, the profile's field
-	// stands, so a repo can pin a dialect in .slop-chop.json.
-	if dialect != "" {
-		profile.Dialect = sanitize.Dialect(dialect)
-	}
-	// Presets add their rules on top of the profile, which still wins on any conflict.
-	if len(presetNames) > 0 {
-		merged, err := sanitize.ApplyPresets(profile, presetNames...)
-		if err != nil {
-			return nil, sanitize.Profile{}, err
-		}
-		profile = merged
-	}
-	// A voice overrides presets: your prefer swaps win and your keep list silences their
-	// cuts. A project profile still outranks a voice, so it is re-applied on top.
 	voice, err := loadVoice()
 	if err != nil {
 		return nil, sanitize.Profile{}, err
 	}
-	if !voice.Empty() {
-		profile = profile.WithVoice(voice)
-		if haveProject {
-			profile = profile.Overlay(projectProfile)
-		}
+	layers.Voice = voice
+	profile, err := layers.Profile()
+	if err != nil {
+		return nil, sanitize.Profile{}, err
 	}
 	s, err := sanitize.New(profile)
 	if err != nil {

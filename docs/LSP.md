@@ -15,17 +15,20 @@ slop-chop lsp
 It speaks the protocol on stdin and stdout. Point your editor's LSP client at that command for
 Markdown, plain text, commit messages, and source files. Add `--preset cleaver` for the
 aggressive swaps, or `--voice path.json` for a specific voice. A `~/.slop-chop/voice.json` is
-picked up on its own.
+picked up on its own. `--code-comments=false` leaves source files alone and checks prose only,
+for a client that maps source languages to the server but wants comment checking off. The
+environment variable `SLOP_CHOP_CODE_COMMENTS=false` does the same.
 
 ## JetBrains IDEs
 
 Install the slop-chop plugin from the JetBrains Marketplace: in IntelliJ IDEA, PyCharm,
 WebStorm, and the rest, open Settings, Plugins, Marketplace, and search **slop-chop**. It wires
 the language server for you, launching `slop-chop lsp` over Markdown, plain text, and source
-files. In a source file it reads only comments (and Python docstrings) and offers a quick fix per
-tell instead of a whole-file chop. Tells show as inspections. You still need the `slop-chop`
-binary on your PATH. To wire it by hand instead, install the LSP4IJ plugin and register a
-server that runs `slop-chop lsp`.
+files. In a source file it reads only comments (and Python docstrings) and offers a quick fix
+per tell instead of a whole-file chop. Tells show as inspections. Settings, Tools, slop-chop has
+a checkbox that turns comment checking off. The server runs in the project folder, so the
+project's `.slop-chop.json` applies. You still need the `slop-chop` binary on your PATH. To wire
+it by hand instead, install the LSP4IJ plugin and register a server that runs `slop-chop lsp`.
 
 ## Neovim
 
@@ -72,8 +75,8 @@ Listing a language's servers in Helix replaces its default list, so keep the usu
 A ready-made extension is on the
 [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=dcadolph.slop-chop)
 and Open VSX, with its source under
-[`vscode/`](https://github.com/dcadolph/slop-chop/tree/main/vscode). It runs the binary
-directly: diagnostics as you type, a "Chop the slop" command, and a document formatter so
+[`vscode/`](https://github.com/dcadolph/slop-chop/tree/main/vscode). The engine ships inside
+it as wasm, so it needs no binary on the PATH: diagnostics as you type, a "Chop the slop" command, and a document formatter so
 format-on-save chops the file. It also reads the comments in source files and offers a quick
 fix on each fixable tell. Its README covers the install. Rolling your own client
 instead works too: point it at `slop-chop lsp` with a document selector for `markdown`,

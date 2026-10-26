@@ -39,6 +39,8 @@ type Sanitizer struct {
 	// protectQuotes leaves double-quoted spans unedited when set, so a quoted source is not
 	// reworded. It mirrors Profile.ProtectQuotes.
 	protectQuotes bool
+	// length holds the sentence length limits. It mirrors Profile.SentenceLength.
+	length SentenceLength
 }
 
 // New compiles the profile into a Sanitizer.
@@ -56,6 +58,7 @@ func New(p Profile) (*Sanitizer, error) {
 		allowPhrases:  phrases,
 		weights:       p.ScoreWeights,
 		protectQuotes: p.ProtectQuotes,
+		length:        p.SentenceLength,
 	}, nil
 }
 
@@ -118,6 +121,7 @@ func (s *Sanitizer) Check(text string) []Finding {
 	findings = append(findings, landingFindings(text, protected)...)
 	findings = append(findings, polyptotonFindings(text, protected)...)
 	findings = append(findings, drumbeatFindings(text, protected)...)
+	findings = append(findings, lengthFindings(text, s.length)...)
 	slices.SortFunc(findings, func(a, b Finding) int {
 		return cmp.Or(cmp.Compare(a.Offset, b.Offset), cmp.Compare(a.Rule, b.Rule))
 	})
@@ -130,12 +134,17 @@ func (s *Sanitizer) Check(text string) []Finding {
 // so the report never contradicts the output. Findings arrive sorted by offset, so every
 // candidate duplicate sits in the run of findings sharing an offset; the whole run is
 // checked, since a third rule sorting between two duplicates must not hide them from
-// each other.
+// each other. A sentence length finding is never a duplicate of another rule's finding, since
+// it marks a whole sentence for a different reason, and folding the two would let the
+// weightless length finding hide a weighted tell.
 func dedupeFindings(findings []Finding) []Finding {
 	out := findings[:0]
 	for _, f := range findings {
 		dup := false
 		for j := len(out) - 1; j >= 0 && out[j].Offset == f.Offset; j-- {
+			if lengthRule(out[j].Rule) != lengthRule(f.Rule) {
+				continue
+			}
 			if strings.EqualFold(out[j].Match, f.Match) {
 				if preferFinding(f, out[j]) {
 					out[j] = f

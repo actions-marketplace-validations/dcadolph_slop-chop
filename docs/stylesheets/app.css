@@ -122,6 +122,11 @@ body:has(#sc-app) .md-grid {
   display: contents;
 }
 
+/* display: contents outranks the hidden attribute, so a hidden row needs saying twice. */
+.sc-score-stats > div[hidden] {
+  display: none;
+}
+
 .sc-score-stats dt {
   font-weight: 700;
   opacity: 0.7;

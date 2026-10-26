@@ -216,3 +216,47 @@ func TestScoreCadenceWeighted(t *testing.T) {
 		t.Errorf("short flat note scored %d (cadence %d), want 0: too few sentences to judge", got.Value, got.Cadence)
 	}
 }
+
+// TestScorePartsReconcile checks that the exported score parts add up to the value, so a
+// breakdown built from them explains the whole number. Each part is rounded on its own, so
+// the sum may miss the value by half a point per part, and a capped value may sit below it.
+func TestScorePartsReconcile(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		In           string
+		WantWeighing bool
+	}{{ // Test 0: The weighing register shows up as its own part.
+		In: "On the one hand the plan is cheap. On the other hand it is slow. At the same " +
+			"time it is simple. On balance it cuts both ways. In the end it matters as well.",
+		WantWeighing: true,
+	}, { // Test 1: Plain prose has no weighing points.
+		In:           "The plan ships on Friday. It costs less than the last one and runs faster.",
+		WantWeighing: false,
+	}, { // Test 2: Dense tells across several parts still reconcile.
+		In: "In today's fast-paced world, we must leverage robust synergies. It may possibly " +
+			"seem that this could perhaps work. Moreover, it is worth noting that we delve " +
+			"into a comprehensive, seamless tapestry, unlocking value, driving growth.",
+		WantWeighing: false,
+	}}
+
+	s := mustSanitizer(t)
+	for testNum, test := range tests {
+		t.Run(fmt.Sprintf("test %d", testNum), func(t *testing.T) {
+			t.Parallel()
+			sc := s.Score(test.In)
+			if got := sc.Weighing > 0; got != test.WantWeighing {
+				t.Errorf("weighing = %d, want points %v", sc.Weighing, test.WantWeighing)
+			}
+			parts := []int{sc.Density, sc.Hedging, sc.Weighing, sc.Drumbeat, sc.Tails,
+				sc.Clauses, sc.Cadence, sc.Evidence}
+			sum := 0
+			for _, p := range parts {
+				sum += p
+			}
+			slack := len(parts) / 2
+			if sc.Value < 100 && (sum < sc.Value-slack || sum > sc.Value+slack) {
+				t.Errorf("parts sum to %d, value %d: off by more than rounding (%+v)", sum, sc.Value, sc)
+			}
+		})
+	}
+}
