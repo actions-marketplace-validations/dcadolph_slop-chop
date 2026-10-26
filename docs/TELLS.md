@@ -548,6 +548,13 @@ Adds 16 buzzwords: `effortless` `game-changer` `guru` `hassle-free` `hidden gem`
 
 ### no-dashes
 
+#### Regex swaps (2)
+
+| From | To |
+| ---- | -- |
+| `(\p{Ll}) -{1,2} (\p{Ll})` | `$1, $2` |
+| `(\p{L})--(\p{L})` | `$1, $2` |
+
 ### plain
 
 #### Word swaps (24)
