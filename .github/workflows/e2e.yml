@@ -30,7 +30,9 @@ on:
 
 jobs:
   browsers:
-    runs-on: ubuntu-latest
+    # Playwright's WebKit build links against the system ICU of one Ubuntu release, and on
+    # 26.04 it fails to load libicudata.so.74, so the runner stays on that release.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
         with:
