@@ -15,17 +15,20 @@ slop-chop lsp
 It speaks the protocol on stdin and stdout. Point your editor's LSP client at that command for
 Markdown, plain text, commit messages, and source files. Add `--preset cleaver` for the
 aggressive swaps, or `--voice path.json` for a specific voice. A `~/.slop-chop/voice.json` is
-picked up on its own.
+picked up on its own. `--code-comments=false` leaves source files alone and checks prose only,
+for a client that maps source languages to the server but wants comment checking off. The
+environment variable `SLOP_CHOP_CODE_COMMENTS=false` does the same.
 
 ## JetBrains IDEs
 
 Install the slop-chop plugin from the JetBrains Marketplace: in IntelliJ IDEA, PyCharm,
 WebStorm, and the rest, open Settings, Plugins, Marketplace, and search **slop-chop**. It wires
 the language server for you, launching `slop-chop lsp` over Markdown, plain text, and source
-files. In a source file it reads only comments (and Python docstrings) and offers a quick fix per
-tell instead of a whole-file chop. Tells show as inspections. You still need the `slop-chop`
-binary on your PATH. To wire it by hand instead, install the LSP4IJ plugin and register a
-server that runs `slop-chop lsp`.
+files. In a source file it reads only comments (and Python docstrings) and offers a quick fix
+per tell instead of a whole-file chop. Tells show as inspections. Settings, Tools, slop-chop has
+a checkbox that turns comment checking off. The server runs in the project folder, so the
+project's `.slop-chop.json` applies. You still need the `slop-chop` binary on your PATH. To wire
+it by hand instead, install the LSP4IJ plugin and register a server that runs `slop-chop lsp`.
 
 ## Neovim
 
