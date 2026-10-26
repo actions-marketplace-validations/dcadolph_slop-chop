@@ -385,11 +385,10 @@
         },
         regexReplace: { ...(base.regexReplace || {}), ...parsePairs(controls.regexSwaps.value) },
         flagPatterns: { ...(base.flagPatterns || {}), ...parsePairs(controls.flagPatterns.value) },
-        blockWords: dedupe([
-          ...(base.blockWords || []),
-          ...v.avoid,
-          ...parseLines(controls.blockWords.value),
-        ]),
+        blockWords: dedupe([...(base.blockWords || []), ...parseLines(controls.blockWords.value)]),
+        // A voice's avoid list flags a word however it is capitalized, the blockAlways rule
+        // the CLI maps a voice file's avoid list to.
+        blockAlways: dedupe([...(base.blockAlways || []), ...v.avoid]),
         allow: dedupe([...(base.allow || []), ...v.keep, ...parseLines(controls.allow.value)]),
         collapseSpaces: controls.collapseSpaces.checked,
         splitSemicolons: controls.splitSemicolons.checked,
