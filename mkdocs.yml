@@ -1,9 +1,6 @@
 site_name: slop-chop
 site_description: Chop the slop. Text that reads like a person wrote it.
 site_url: https://slop-chop.com/
-repo_url: https://github.com/dcadolph/slop-chop
-repo_name: dcadolph/slop-chop
-edit_uri: ""
 docs_dir: docs
 use_directory_urls: false
 copyright: MIT License
@@ -57,6 +54,7 @@ nav:
   - MCP server: MCP.md
   - Claude plugin: PLUGIN.md
   - Privacy: PRIVACY.md
+  - GitHub: https://github.com/dcadolph/slop-chop
 
 markdown_extensions:
   - admonition
