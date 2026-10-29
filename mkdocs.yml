@@ -54,6 +54,7 @@ nav:
   - MCP server: MCP.md
   - Claude plugin: PLUGIN.md
   - Privacy: PRIVACY.md
+  - GitHub: https://github.com/dcadolph/slop-chop
 
 markdown_extensions:
   - admonition
