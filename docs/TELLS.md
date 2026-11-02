@@ -557,11 +557,11 @@ Adds 16 buzzwords: `effortless` `game-changer` `guru` `hassle-free` `hidden gem`
 
 ### plain
 
-#### Word swaps (24)
+#### Word swaps (23)
 
 | From | To |
 | ---- | -- |
-| `additional` | `more` |
+| `additional` | `extra` |
 | `approximately` | `about` |
 | `ascertain` | `find out` |
 | `assistance` | `help` |
@@ -580,7 +580,6 @@ Adds 16 buzzwords: `effortless` `game-changer` `guru` `hassle-free` `hidden gem`
 | `purchase` | `buy` |
 | `regarding` | `about` |
 | `require` | `need` |
-| `sufficient` | `enough` |
 | `terminate` | `end` |
 | `utilise` | `use` |
 | `utilization` | `use` |
@@ -615,6 +614,8 @@ Adds 25 buzzwords: `actionable` `bandwidth` `best practice` `boil the ocean` `ci
 ### procedure
 
 Flags a sentence in a list item over 20 words and any other prose sentence over 25 words. The flags carry no score weight.
+
+Flags a list item whose first sentence is in the passive voice. The flag carries no score weight.
 
 ### typography
 
